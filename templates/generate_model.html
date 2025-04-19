@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Model Tabanlı Veri Üretimi{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="text-center">Model Tabanlı Sentetik Veri Üretimi</h2>
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            {% if current_user.is_authenticated %}
+                <!-- Form -->
+                <form action="{{ url_for('generate_model_data') }}" method="POST" enctype="multipart/form-data" class="mt-4 p-4 border rounded bg-light">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label class="form-label">Örnek Veri Seti (CSV)</label>
+                        <input type="file" class="form-control" name="dataset" accept=".csv" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Çıktı Formatı</label>
+                        <select class="form-select" name="format">
+                            <option value="csv">CSV</option>
+                            <option value="xlsx">XLSX</option>
+                        </select>
+                        <label class="form-label">Üretilecek Satır Sayısı</label>
+                        <input type="number" class="form-control" name="num_rows" min="1" required>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">Model Tabanlı Veri Üret</button>
+                </form>
+            {% else %}
+                <!-- Giriş yapılmamışsa -->
+                <div class="text-center">
+                    <p>Bu özelliği kullanmak için lütfen giriş yapın.</p>
+                    <a href="{{ url_for('login') }}" class="btn btn-primary">Giriş Yap</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

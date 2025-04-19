@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Veri Üret{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="text-center">Sentetik Veri Üretimi</h2>
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            {% if current_user.is_authenticated %}
+                <!-- Kullanıcı giriş yapmışsa formu göster -->
+                <form action="{{ url_for('generate_data') }}" method="POST" class="mt-4 p-4 border rounded bg-light">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label class="form-label">Satır Sayısı</label>
+                        <input type="number" class="form-control" name="rows" min="1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Sütun Sayısı</label>
+                        <input type="number" class="form-control" name="columns" min="1" id="columnsInput" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Dosya Formatı</label>
+                        <select class="form-select" name="format">
+                            <option value="csv">CSV</option>
+                            <option value="xlsx">XLSX</option>
+                        </select>
+                    </div>
+
+                    <!-- Dinamik Veri Türü Seçimi -->
+                    <div class="mb-3">
+                        <label class="form-label">Veri Türleri</label>
+                        <div id="dataTypesContainer"></div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">Veri Üret</button>
+                </form>
+            {% else %}
+                <!-- Kullanıcı giriş yapmamışsa giriş/kayıt ol butonlarını göster -->
+                <div class="text-center">
+                    <p>Veri üretmek için lütfen giriş yapın veya kayıt olun.</p>
+                    <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg w-100 mb-2">Giriş Yap</a>
+                    <a href="{{ url_for('register') }}" class="btn btn-secondary btn-lg w-100">Kayıt Ol</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const columnsInput = document.getElementById("columnsInput");
+        if (columnsInput) {
+            columnsInput.addEventListener("input", function() {
+                const columns = parseInt(this.value) || 0;
+                const container = document.getElementById("dataTypesContainer");
+                container.innerHTML = "";
+
+                for (let i = 0; i < columns; i++) {
+                    const div = document.createElement("div");
+                    div.className = "mb-2";
+
+                    const label = document.createElement("label");
+                    label.className = "form-label";
+                    label.textContent = `Sütun ${i+1} Veri Türü`;
+
+                    const select = document.createElement("select");
+                    select.name = `data_type_${i}`;
+                    select.className = "form-select";
+                    select.innerHTML = `
+                        <option value="integer">Tamsayı</option>
+                        <option value="float">Ondalık</option>
+                        <option value="text">Metin</option>
+                        <option value="date">Tarih</option>
+                    `;
+
+                    div.appendChild(label);
+                    div.appendChild(select);
+                    container.appendChild(div);
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

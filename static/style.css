@@ -1,0 +1,44 @@
+/* Arka Plan Resmi - Tam Ekran */
+.hero {
+    position: fixed; /* Sayfanın tamamını kaplaması için */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: url('/static/background.jpg') no-repeat center center/cover;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: white;
+    text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.7);
+    z-index: -1;
+}
+
+/* İçerik Alanı */
+.hero-content {
+    max-width: 800px;
+    position: relative;
+    z-index: 2;
+}
+
+/* Butonlar */
+.btn {
+    padding: 12px 24px;
+    font-size: 1.2rem;
+    border-radius: 5px;
+    transition: 0.3s;
+}
+
+.btn:hover {
+    transform: scale(1.05);
+}
+
+/* Sayfanın geri kalanını da tam ekran kaplaması için */
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto; /* Sayfa kaymasını engeller, tam ekran görünümü sağlar */
+}

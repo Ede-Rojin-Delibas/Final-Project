@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}Hoş Geldiniz{% endblock %}
+
+{% block content %}
+<div class="container-fluid d-flex align-items-center justify-content-center vh-100 text-white" 
+style="background: url('/static/bg.jpg') no-repeat center center/cover;">
+    
+    <div class="text-center p-5 bg-dark bg-opacity-75 rounded">
+        <h1 class="display-4 fw-bold">Sentetik Veri Üretim S</h1>
+        <p class="lead">Makine öğrenmesi ve veri analizi için özelleştirilebilir sentetik veri setleri oluşturun.</p>
+
+        {% if current_user.is_authenticated %}
+            <a href="{{ url_for('generate_data') }}" class="btn btn-success btn-lg mt-3">Veri Üretmeye Başla</a>
+        {% else %}
+            <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg mt-3">Veri Üretmeye Başla</a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

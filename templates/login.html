@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Giriş Yap{% endblock %}
+
+{% block content %}
+<div class="container d-flex align-items-center justify-content-center vh-100">
+    <div class="col-md-4 p-4 border rounded bg-light shadow">
+        <h2 class="text-center">Giriş Yap</h2>
+
+        <!-- Giriş Formu -->
+        <form method="POST" class="mt-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-3">
+                <label class="form-label">E-Posta Adresi</label>
+                <input type="email" class="form-control" name="email" autocomplete="off" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Şifre</label>
+                <input type="password" class="form-control" name="password" autocomplete="off" required>
+            </div>
+
+            <div class="mb-3 text-end">
+                <a href="#" class="text-decoration-none">Parolanı mı unuttun?</a>
+            </div>
+
+
+            <button type="submit" class="btn btn-primary w-100">Giriş Yap</button>
+        </form>
+
+        <hr class="my-4">
+
+        <!-- Diğer Platformlarla Giriş -->
+        <div class="text-center">
+            <p>Veya şu hesaplarla devam et:</p>
+            <a href="{{ url_for('login_google') }}" class="btn btn-outline-dark w-100 mb-2">
+                <img src="{{ url_for('static', filename='google-icon.png') }}" width="20"> Google ile Devam Et
+            </a>
+        
+            <!-- <button class="btn btn-outline-dark w-100">
+                <img src="{{ url_for('static', filename='apple-icon.png') }}" width="20"> Apple ile Devam Et
+            </button> -->
+        </div>
+
+        <!-- Kayıt Ol Bağlantısı -->
+        <div class="text-center mt-3">
+            <p>Hesabın yok mu? <a href="{{ url_for('register') }}" class="text-decoration-none">Kayıt Ol</a></p>
+        </div>
+    </div>
+</div>
+{% endblock %}
