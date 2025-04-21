@@ -12,6 +12,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
 
     {% block head %}{% endblock %}
+      
 </head>
 
 <body>
@@ -39,7 +40,12 @@
               <li class="nav-item">
                 <a class="nav-link" href="{{ url_for('about') }}">Hakkında</a>
               </li>
+
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('contact') }}">İletişim</a>
+              </li>
             </ul>
+            
       
             <!-- Giriş / Çıkış -->
             <ul class="navbar-nav mb-2 mb-lg-0">
@@ -56,15 +62,7 @@
               </li>
               {% endif %}
             </ul>
-                
-          <!-- Sosyal Medya -->
-          <div class="d-flex align-items-center ms-3">
-            <a href="https://github.com/Ede-Rojin-Delibas/" class="text-white me-2" target="_blank"><i class="bi bi-github"></i></a>
-            <a href="https://linkedin.com/in/ede-rojin-delibaş" class="text-white me-2" target="_blank"><i class="bi bi-linkedin"></i></a>
-            <a href="https://medium.com/@ederojind" class="text-white me-2" target="_blank"><i class="bi bi-medium"></i></a>
-            <a href="https://instagram.com/1ekinox" class="text-white" target="_blank"><i class="bi bi-instagram"></i></a>
-            <a href="https://www.kaggle.com/ederojindeliba" class="text-white" target="_blank"><i class="bi bi-kanban"></i></a>
-        </div>
+        
         </div>
       </div>
     </nav>

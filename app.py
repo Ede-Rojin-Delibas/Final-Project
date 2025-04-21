@@ -90,6 +90,11 @@ def generate_fake_data(rows, columns, data_types):
 def about():
     return render_template('about.html')
 
+#iletişim bilgileri
+@app.route('/contact')
+def contact():
+    return render_template('contact.html')
+
 # Model Tabanlı Veri Üretimi Sayfası
 @app.route('/generate_model', methods=['GET', 'POST'])
 @login_required

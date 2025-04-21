@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}İletişim{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="text-center mb-4">Benimle İletişime Geçin</h2>
+
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+
+            <p class="lead">Projeye dair öneri, katkı ya da iş birliği tekliflerinizi bekliyorum!</p>
+
+            <div class="d-flex justify-content-center gap-3 mt-4">
+                <a href="https://github.com/Ede-Rojin-Delibas" target="_blank" class="text-dark fs-2 social-icon">
+                    <i class="bi bi-github"></i> GitHub
+                </a>
+                <a href="https://linkedin.com/in/ede-rojin-delibaş" target="_blank" class="text-primary fs-2 social-icon">
+                    <i class="bi bi-linkedin"></i> LinkedIn
+                </a>
+            </div>
+
+            <div class="d-flex justify-content-center gap-3 mt-3">
+                <a href="https://medium.com/@ederojind" target="_blank" class="text-dark fs-2 social-icon">
+                    <i class="bi bi-medium"></i> Medium
+                </a>
+                <a href="https://www.kaggle.com/ederojindeliba" target="_blank" class="text-info fs-2 social-icon">
+                    <i class="bi bi-kanban"></i> Kaggle
+                </a>
+                <a href="https://instagram.com/1ekinox" target="_blank" class="text-danger fs-2 social-icon">
+                    <i class="bi bi-instagram"></i> Instagram
+                </a>
+
+                <p class="mt-4">📧 E-posta: <strong>ederojind@gmail.com</strong></p>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+    .social-icon {
+        transition: transform 0.2s ease-in-out;
+    }
+
+    .social-icon:hover {
+        transform: scale(1.2);
+        opacity: 0.8;
+    }
+</style>
+{% endblock %}
