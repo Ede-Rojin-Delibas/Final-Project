@@ -27,25 +27,40 @@ app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
 app.config['SESSION_COOKIE_SECURE'] = False        # HTTPS ile çalışır (yayın ortamında aktif)
 app.config['SESSION_COOKIE_HTTPONLY'] = True      # JavaScript erişemez
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'     # CSRF koruması
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+# app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///instance/database.db'
+basedir = os.path.abspath(os.path.dirname(__file__))
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'instance', 'database.db')
 app.permanent_session_lifetime = timedelta(minutes=30)  # Oturum süresi (30 dakika)
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
+
+
 # Kullanıcı Modeli
 class User(db.Model, UserMixin):  # UserMixin ekledik
     id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100))
     email = db.Column(db.String(150), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)  
 
     def set_password(self, password):
         self.password_hash = bcrypt.generate_password_hash(password)  # Şifre hashleme
 
     def check_password(self, password):
         return bcrypt.check_password_hash(self.password_hash, password)  # Şifre doğrulama
+
+#kullanıcı aktiviteleri modeli
+class UserActivity(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    action = db.Column(db.String(100), nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref=db.backref('activities', lazy=True))
 
 @login_manager.user_loader
 def load_user(user_id):
