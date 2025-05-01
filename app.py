@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 import pandas as pd
+from flask_migrate import Migrate
 import numpy as np
 import os
 from io import BytesIO
@@ -19,7 +20,7 @@ from sdv.metadata import SingleTableMetadata
 from flask_wtf import CSRFProtect #İzinsiz işlemleri engellemek için
 import secrets
 from datetime import timedelta
-
+from flask import send_file
 
 app = Flask(__name__)
 csrf = CSRFProtect(app)
@@ -33,6 +34,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'in
 app.permanent_session_lifetime = timedelta(minutes=30)  # Oturum süresi (30 dakika)
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
+migrate = Migrate(app, db)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
@@ -42,6 +44,7 @@ login_manager.login_view = 'login'
 class User(db.Model, UserMixin):  # UserMixin ekledik
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100))
+    username = db.Column(db.String(80), nullable=False)
     email = db.Column(db.String(150), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
@@ -53,14 +56,6 @@ class User(db.Model, UserMixin):  # UserMixin ekledik
     def check_password(self, password):
         return bcrypt.check_password_hash(self.password_hash, password)  # Şifre doğrulama
 
-#kullanıcı aktiviteleri modeli
-class UserActivity(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    action = db.Column(db.String(100), nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-
-    user = db.relationship('User', backref=db.backref('activities', lazy=True))
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -174,6 +169,7 @@ def is_password_strong(password):
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
+        username = request.form['username']
         email = request.form['email']
         password = request.form['password']
         confirm_password = request.form['confirm_password']
@@ -196,7 +192,7 @@ def register():
         is_admin = (email == "deyenazdar@gmail.com")  
 
         # Yeni kullanıcı oluştur
-        new_user = User(email=email, password_hash=hashed_password, is_admin=is_admin)
+        new_user = User(username=username,email=email, password_hash=hashed_password, is_admin=is_admin)
 
         # Veritabanına kaydet
         db.session.add(new_user)
@@ -232,10 +228,13 @@ def login():
             login_user(user)
             flash('Giriş başarılı!', 'success')
             return redirect(url_for('generate_data'))
+            
         else:
             flash('Giriş başarısız. Lütfen bilgilerinizi kontrol edin.', 'danger')
     
     return render_template('login.html')
+login_manager.login_view = 'login'  # 'login' route ismin neyse
+
 
 from authlib.integrations.flask_client import OAuth
 
@@ -341,6 +340,18 @@ def generate_data():
 
     return render_template('generate.html')
 
+#kullanıcı aktiviteleri modeli
+class UserActivity(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    action = db.Column(db.String(100), nullable=False)  #kullanıcının yaptığı işlem (örneğin: 'veri üretimi', 'giriş', 'çıkış')
+    date_created = db.Column(db.DateTime, default=datetime.utcnow) # Aktivite tarihi
+    data_type = db.Column(db.String(50))  # örnek: 'random', 'model'
+    row_count = db.Column(db.Integer)
+    column_count = db.Column(db.Integer)
+    file_format = db.Column(db.String(10))  # örnek: 'csv', 'xlsx'
+    user = db.relationship('User', backref=db.backref('activities', lazy=True))
+
 
 #kullanıcıları listeleme
 @app.route('/users')
@@ -375,6 +386,58 @@ def make_admin(email):
         flash("Kullanıcı bulunamadı!", "warning")
     return redirect(url_for('home'))
 
+class Production(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    date = db.Column(db.Date)
+    type = db.Column(db.String(50))
+    row = db.Column(db.Integer)
+    column = db.Column(db.Integer)
+    format = db.Column(db.String(10))
+    file_path = db.Column(db.String(200))
+
+    user = db.relationship('User', backref=db.backref('productions', lazy=True))
+
+#profil sayfası
+@login_required
+@app.route('/profile', methods=['GET', 'POST'])
+def profile():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    user = User.query.get(session['user_id'])
+     # Filtreleme için tarih aralığı
+    start_date = None
+    end_date = None
+    productions_query = Production.query.filter_by(user_id=user.id)
+    if request.method == 'POST':
+        try:
+            start_date = datetime.strptime(request.form['start_date'], '%Y-%m-%d')
+            end_date = datetime.strptime(request.form['end_date'], '%Y-%m-%d')
+            productions_query = productions_query.filter(Production.date >= start_date,
+                                                          Production.date <= end_date)
+        except ValueError:
+            pass  # Hatalı tarih formatı olursa filtre uygulama
+
+    productions = productions_query.order_by(Production.date.desc()).all()
+    total_production = len(productions)
+
+    return render_template('profile.html',
+                           user=user,
+                           productions=productions,
+                           total_production=total_production)
+
+@app.route('/download/<int:id>')
+def download(id):
+    production = Production.query.get_or_404(id)
+    # Dosya yolu: örnek olarak path'i modeline kaydetmiş olalım
+    return send_file(production.file_path, as_attachment=True)
+
+@app.route('/delete/<int:id>')
+def delete(id):
+    production = Production.query.get_or_404(id)
+    db.session.delete(production)
+    db.session.commit()
+    return redirect(url_for('profile'))
 
 if __name__ == "__main__":
     with app.app_context():
