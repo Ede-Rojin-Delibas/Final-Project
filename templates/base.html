@@ -4,82 +4,53 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Veri Üretim{% endblock %}</title>
-
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-
-    <!-- ✅ Bootstrap Icons -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-
+    <script src="https://cdn.tailwindcss.com"></script>
     {% block head %}{% endblock %}
-      
 </head>
 
-<body>
+<body class="bg-gray-50 text-gray-800 font-sans">
 
     <!-- NAVBAR -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-          <a class="navbar-brand fw-bold" href="{{ url_for('home') }}">VeriÜretim</a>
-      
-          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-            <span class="navbar-toggler-icon"></span>
-          </button>
-      
-          <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-      
-              <li class="nav-item">
-                <a class="nav-link" href="{{ url_for('generate_data') }}">Veri Üret</a>
-              </li>
-      
-              <li class="nav-item">
-                <a class="nav-link" href="{{ url_for('generate_model_data') }}">Model Tabanlı Üretim</a>
-              </li>
-      
-              <li class="nav-item">
-                <a class="nav-link" href="{{ url_for('about') }}">Hakkında</a>
-              </li>
+    <nav class="bg-gray-800 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Sol Menü -->
+                <div class="flex items-center space-x-4">
+                    <a href="{{ url_for('home') }}" class="text-xl font-bold hover:text-gray-300">VeriÜretim</a>
+                    <a href="{{ url_for('generate_data') }}" class="hover:text-gray-300">Veri Üret</a>
+                    <a href="{{ url_for('generate_model_data') }}" class="hover:text-gray-300">Model Tabanlı Üretim</a>
+                    <a href="{{ url_for('about') }}" class="hover:text-gray-300">Hakkında</a>
+                    <a href="{{ url_for('contact') }}" class="hover:text-gray-300">İletişim</a>
+                    <a href="{{ url_for('profile') }}" class="hover:text-gray-300">Profil</a>
+                </div>
 
-              <li class="nav-item">
-                <a class="nav-link" href="{{ url_for('contact') }}">İletişim</a>
-              </li>
-
-              <li class="nav-item">
-                <a class="nav-link" href="{{ url_for('profile') }}">Profil</a>
-              </li>
-            </ul>
-            
-      
-            <!-- Giriş / Çıkış -->
-            <ul class="navbar-nav mb-2 mb-lg-0">
-              {% if current_user.is_authenticated %}
-              <li class="nav-item">
-                <a class="nav-link" href="{{ url_for('logout') }}">Çıkış Yap</a>
-              </li>
-              {% else %}
-              <li class="nav-item">
-                <a class="nav-link" href="{{ url_for('login') }}">Giriş Yap</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" href="{{ url_for('register') }}">Kayıt Ol</a>
-              </li>
-              {% endif %}
-            </ul>
-        
+                <!-- Sağ Menü -->
+                <div class="space-x-4">
+                    {% if current_user.is_authenticated %}
+                        <span class="text-sm text-gray-300">Merhaba, {{ current_user.username }}</span>
+                        <a href="{{ url_for('logout') }}" class="hover:text-red-300">Çıkış Yap</a>
+                    {% else %}
+                        <a href="{{ url_for('login') }}" class="hover:text-green-300">Giriş Yap</a>
+                        <a href="{{ url_for('register') }}" class="hover:text-green-300">Kayıt Ol</a>
+                    {% endif %}
+                </div>
+            </div>
         </div>
-      </div>
     </nav>
 
     <!-- SAYFA İÇERİĞİ -->
-    <main class="container-fluid">
+    <main class="max-w-7xl mx-auto p-4">
         {% block content %}{% endblock %}
     </main>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white text-center py-4 mt-10">
+        <p>&copy; 2025 Sentetik Veri Üretim Sistemi. Tüm hakları saklıdır.</p>
+    </footer>
 
     {% block scripts %}{% endblock %}
 </body>
 </html>
 
+
+   

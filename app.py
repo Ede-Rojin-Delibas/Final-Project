@@ -42,6 +42,7 @@ login_manager.login_view = 'login'
 
 # Kullanıcı Modeli
 class User(db.Model, UserMixin):  # UserMixin ekledik
+    __tablename__ = 'user' 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100))
     username = db.Column(db.String(80), nullable=False)
@@ -130,6 +131,45 @@ def generate_model_data():
             # Yeni veri üret
             synthetic_data = model.sample(num_rows)
 
+            # Dosya kaydı
+            filename = f"model_{current_user.id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.{file_format}"
+            folder_path = os.path.join('generated_files')
+            os.makedirs(folder_path, exist_ok=True)
+            file_path = os.path.join(folder_path, filename)
+
+            if file_format == 'csv':
+                synthetic_data.to_csv(file_path, index=False)
+                mimetype = 'text/csv'
+            elif file_format == 'xlsx':
+                with pd.ExcelWriter(file_path, engine='openpyxl') as writer:
+                    synthetic_data.to_excel(writer, index=False)
+                mimetype = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+
+            # Veritabanına kayıt: UserActivity
+            activity = UserActivity(
+                user_id=current_user.id,
+                action='veri üretimi',
+                data_type='model',
+                row_count=num_rows,
+                column_count=len(synthetic_data.columns),
+                file_format=file_format
+            )
+
+            # Veritabanına kayıt: Production
+            production = Production(
+                user_id=current_user.id,
+                date=datetime.utcnow().date(),
+                type='model',
+                row=num_rows,
+                column=len(synthetic_data.columns),
+                format=file_format,
+                file_path=file_path
+            )
+
+            db.session.add(activity)
+            db.session.add(production)
+            db.session.commit()
+
             # Dosya olarak hazırla
             output = BytesIO()
             if file_format == 'csv':
@@ -140,7 +180,7 @@ def generate_model_data():
                 with pd.ExcelWriter(output, engine='openpyxl') as writer:
                     synthetic_data.to_excel(writer, index=False)
                 output.seek(0)
-                return send_file(output, as_attachment=True, download_name='synthetic_data.xlsx', mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                return send_file(file_path, as_attachment=True, download_name=filename, mimetype=mimetype)
 
         except Exception as e:
             flash(f"Veri üretimi sırasında bir hata oluştu: {str(e)}", "danger")
@@ -233,7 +273,7 @@ def login():
             flash('Giriş başarısız. Lütfen bilgilerinizi kontrol edin.', 'danger')
     
     return render_template('login.html')
-login_manager.login_view = 'login'  # 'login' route ismin neyse
+login_manager.login_view = 'login'  
 
 
 from authlib.integrations.flask_client import OAuth
@@ -274,6 +314,7 @@ def google_callback():
     
     login_user(user)
     flash("Google ile giriş yapıldı!", "success")
+    session['user_id'] = user.id
     return redirect(url_for('home'))
 
 # Çıkış Yapma
@@ -315,6 +356,45 @@ def generate_data():
 
         data = generate_fake_data(rows, columns, data_types)
 
+        # Dosya kaydı
+        filename = f"random_{current_user.id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.{file_format}"
+        folder_path = os.path.join('generated_files')
+        os.makedirs(folder_path, exist_ok=True)
+        file_path = os.path.join(folder_path, filename)
+
+        if file_format == 'csv':
+            data.to_csv(file_path, index=False)
+            mimetype = 'text/csv'
+        elif file_format == 'xlsx':
+            with pd.ExcelWriter(file_path, engine='openpyxl') as writer:
+                data.to_excel(writer, index=False)
+            mimetype = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+
+        # Veritabanına kayıt: UserActivity
+        activity = UserActivity(
+            user_id=current_user.id,
+            action='veri üretimi',
+            data_type='random',
+            row_count=rows,
+            column_count=columns,
+            file_format=file_format
+        )
+
+        # Veritabanına kayıt: Production
+        production = Production(
+            user_id=current_user.id,
+            date=datetime.utcnow().date(),
+            type='random',
+            row=rows,
+            column=columns,
+            format=file_format,
+            file_path=file_path
+        )
+
+        db.session.add(activity)
+        db.session.add(production)
+        db.session.commit()
+
         # **Veriyi Oluştur**
         #for i in range(columns):
         #   if data_types[i] == 'integer':
@@ -336,7 +416,7 @@ def generate_data():
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
                 data.to_excel(writer, index=False)
             output.seek(0)
-            return send_file(output, as_attachment=True, download_name='generated_data.xlsx', mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            return send_file(file_path, as_attachment=True, download_name=filename, mimetype=mimetype)
 
     return render_template('generate.html')
 
@@ -399,16 +479,18 @@ class Production(db.Model):
     user = db.relationship('User', backref=db.backref('productions', lazy=True))
 
 #profil sayfası
-@login_required
 @app.route('/profile', methods=['GET', 'POST'])
+@login_required
 def profile():
-    if 'user_id' not in session:
+    # Kullanıcının giriş yapıp yapmadığını kontrol et
+    if not current_user.is_authenticated:
+        flash("Lütfen giriş yapın!", "danger")
         return redirect(url_for('login'))
-    user = User.query.get(session['user_id'])
+
      # Filtreleme için tarih aralığı
     start_date = None
     end_date = None
-    productions_query = Production.query.filter_by(user_id=user.id)
+    productions_query = Production.query.filter_by(user_id=current_user.id)
     if request.method == 'POST':
         try:
             start_date = datetime.strptime(request.form['start_date'], '%Y-%m-%d')
@@ -420,9 +502,9 @@ def profile():
 
     productions = productions_query.order_by(Production.date.desc()).all()
     total_production = len(productions)
-
+    print(current_user.is_authenticated)
     return render_template('profile.html',
-                           user=user,
+                           current_user=current_user,
                            productions=productions,
                            total_production=total_production)
 
