@@ -12,15 +12,17 @@ import random
 import string
 from faker import Faker
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 import re  # Regex kütüphanesi
 from sdv.single_table import CTGANSynthesizer
 import tempfile
 import sdv
 from sdv.metadata import SingleTableMetadata
-from flask_wtf import CSRFProtect #İzinsiz işlemleri engellemek için
+from flask_wtf.csrf import CSRFProtect #İzinsiz işlemleri engellemek için
 import secrets
 from datetime import timedelta
 from flask import send_file
+import uuid
 
 app = Flask(__name__)
 csrf = CSRFProtect(app)
@@ -29,6 +31,10 @@ app.config['SESSION_COOKIE_SECURE'] = False        # HTTPS ile çalışır (yay�
 app.config['SESSION_COOKIE_HTTPONLY'] = True      # JavaScript erişemez
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'     # CSRF koruması
 # app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///instance/database.db'
+# Profil fotoğrafı yükleme klasörü ve izin verilen dosya türleri
+app.config['UPLOAD_FOLDER'] = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'static', 'uploads')
+app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024  # 2MB sınırı
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'instance', 'database.db')
 app.permanent_session_lifetime = timedelta(minutes=30)  # Oturum süresi (30 dakika)
@@ -38,6 +44,14 @@ migrate = Migrate(app, db)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
+# CSRF hata yakalayıcı ekleyin
+@app.errorhandler(400)
+def handle_csrf_error(e):
+    flash("CSRF doğrulama hatası. Lütfen sayfayı yenileyip tekrar deneyin.", "danger")
+    return redirect(url_for('profile'))
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
 # Kullanıcı Modeli
@@ -50,6 +64,7 @@ class User(db.Model, UserMixin):  # UserMixin ekledik
     password_hash = db.Column(db.String(256), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  
+    profile_picture = db.Column(db.String(120), nullable=True)
 
     def set_password(self, password):
         self.password_hash = bcrypt.generate_password_hash(password)  # Şifre hashleme
@@ -330,7 +345,7 @@ def logout():
 @app.route('/generate', methods=['GET', 'POST'])
 @login_required
 def generate_data():
-    print("Current User:", current_user)  # Test için ekleyelim
+    print("Current User:", current_user)  
     print("Is Authenticated:", current_user.is_authenticated)  # Kullanıcı giriş yaptı mı?
     
     if request.method == 'POST':
@@ -487,27 +502,77 @@ def profile():
         flash("Lütfen giriş yapın!", "danger")
         return redirect(url_for('login'))
 
-     # Filtreleme için tarih aralığı
-    start_date = None
-    end_date = None
+    # Üretim verilerini sorgula
     productions_query = Production.query.filter_by(user_id=current_user.id)
+    message = None
+    
     if request.method == 'POST':
-        try:
-            start_date = datetime.strptime(request.form['start_date'], '%Y-%m-%d')
-            end_date = datetime.strptime(request.form['end_date'], '%Y-%m-%d')
-            productions_query = productions_query.filter(Production.date >= start_date,
-                                                          Production.date <= end_date)
-        except ValueError:
-            pass  # Hatalı tarih formatı olursa filtre uygulama
+        form_type = request.form.get('form_type')
+        
+        # Profil fotoğrafı yükleme işlemi
+        if form_type == 'profile_photo' and 'profile_picture' in request.files:
+            file = request.files['profile_picture']
+            if file and file.filename and allowed_file(file.filename):
+                try:
+                    # Benzersiz dosya adı oluştur
+                    filename = f"{uuid.uuid4().hex}_{secure_filename(file.filename)}"
+                    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
 
+                    # Uploads klasörünü kontrol et ve oluştur
+                    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+                    # Eski fotoğraf varsa sil
+                    if current_user.profile_picture:
+                        old_path = os.path.join(app.config['UPLOAD_FOLDER'], current_user.profile_picture)
+                        try:
+                            if os.path.exists(old_path):
+                                os.remove(old_path)
+                        except Exception as e:
+                            flash(f"Eski dosya silinirken bir hata oluştu: {str(e)}", "warning")
+
+                    # Yeni dosyayı kaydet
+                    file.save(file_path)
+                    current_user.profile_picture = f'uploads/{filename}'
+                    try:
+                        db.session.commit()
+                        flash("Profil fotoğrafınız başarıyla yüklendi.", "success")
+                    except Exception as e:
+                        flash(f"Veritabanı güncellemesi sırasında bir hata oluştu: {str(e)}", "danger")
+                        return redirect(url_for('profile'))
+                except Exception as e:
+                    flash(f"Dosya yüklenirken bir hata oluştu: {str(e)}", "danger")
+            else:
+                flash("Geçersiz dosya formatı. Lütfen PNG, JPG, JPEG veya GIF yükleyin.", "warning")
+
+        # Tarih filtreleme işlemi
+        elif form_type == 'date_filter':
+            try:
+                start_date = request.form.get('start_date')
+                end_date = request.form.get('end_date')
+                if start_date and end_date:
+                    start_date = datetime.strptime(start_date, '%Y-%m-%d')
+                    end_date = datetime.strptime(end_date, '%Y-%m-%d')
+                    # Bitiş tarihine 23:59:59 ekleyerek günün sonunu dahil et
+                    end_date = end_date + timedelta(days=1, microseconds=-1)
+                    productions_query = productions_query.filter(
+                        Production.date >= start_date,
+                        Production.date <= end_date
+                    )
+                    print("Filtrelenmiş Veriler:", productions_query.all())
+            except ValueError:
+                flash("Geçersiz tarih formatı. Lütfen doğru bir tarih girin.", "warning")
+
+    # Üretimleri tarihe göre sırala
     productions = productions_query.order_by(Production.date.desc()).all()
+    # Eğer filtreleme sonucunda veri yoksa mesaj ayarla
+    if not productions:
+        message = "Bu tarihler arasında veri üretimi yapmadınız."
     total_production = len(productions)
-    print(current_user.is_authenticated)
-    return render_template('profile.html',
-                           current_user=current_user,
-                           productions=productions,
-                           total_production=total_production)
 
+    return render_template('profile.html',
+                         current_user=current_user,
+                         productions=productions,
+                         total_production=total_production)
 @app.route('/download/<int:id>')
 def download(id):
     production = Production.query.get_or_404(id)

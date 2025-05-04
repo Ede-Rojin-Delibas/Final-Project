@@ -3,31 +3,73 @@
 {% block title %}Profil{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto mt-10 p-6 bg-white shadow-md rounded-lg">
-    <h2 class="text-2xl font-bold text-gray-800 mb-4">👋 Merhaba, {{ current_user.username }}!</h2>
-    <p class="text-gray-600"><strong>Email:</strong> {{ current_user.email }}</p>
-    <p class="text-gray-600"><strong>Kullanıcı Adı:</strong> {{ current_user.username }}</p>
-    <p class="text-gray-600"><strong>Kayıt Tarihi:</strong> {{ current_user.created_at.strftime('%d.%m.%Y') }}</p>
+<div class="max-w-5xl mx-auto mt-10 p-8 bg-gray-50 shadow-lg rounded-2xl hover:shadow-xl transition-shadow duration-300 overflow-y-auto max-h-screen">
+    <!-- Profil Resmi ve Yükleme Formu -->
+    <div class="flex items-center space-x-6 mb-6">
+        <div class="w-24 h-24 rounded-full bg-gray-300 overflow-hidden border-4 border-white shadow-md">
+            {% if current_user.profile_picture %}
+            <img src="{{ url_for('static', filename=current_user.profile_picture) }}" alt="Profil Resmi">
+            {% else %}
+                <span class="flex items-center justify-center h-full w-full text-white font-bold text-xl bg-blue-500">
+                    {{ current_user.username[0] | upper }}
+                </span>
+            {% endif %}
+        </div>
+    
+        <form method="POST" enctype="multipart/form-data" name="profile_photo_form">
+            <input type="hidden" name="form_type" value="profile_photo">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label for="profile_picture" class="block text-sm font-medium text-gray-700">Profil Fotoğrafı:</label>
+            <input type="file" name="profile_picture" id="profile_picture" accept="image/*" class="mt-1"/>
+            <button type="submit" class="mt-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Yükle</button>
+        </form>
+    </div>
 
-    <hr class="my-4 border-gray-300">
+    <!-- Kullanıcı Bilgileri -->
+    <div class="space-y-3">
+        <h2 class="text-3xl font-bold text-gray-800">👋 Merhaba, {{ current_user.username }}!</h2>
+        <p class="text-gray-700"><strong>Email:</strong> {{ current_user.email }}</p>
+        <p class="text-gray-700"><strong>Kullanıcı Adı:</strong> {{ current_user.username }}</p>
+        <p class="text-gray-700"><strong>Kayıt Tarihi:</strong> {{ current_user.created_at.strftime('%d.%m.%Y') }}</p>
+    </div>
 
-    <h4 class="text-lg font-semibold text-gray-800 mb-4">📈 Toplam Üretim: 
-        <span class="inline-block bg-blue-500 text-white text-sm font-medium px-3 py-1 rounded-full">
-            {{ total_production }}
-        </span>
-    </h4>
+    <hr class="my-6 border-gray-300">
+        
+    <!-- Toplam Üretim ve Filtreleme -->
+    <div class="bg-white p-6 rounded-lg shadow-sm mb-6">
+        <div class="flex items-center justify-between mb-4">
+            <h4 class="text-xl font-semibold text-gray-800">📈 Toplam Üretim: 
+                <span class="inline-block bg-blue-500 text-white text-sm font-medium px-3 py-1 rounded-full">
+                    {{ total_production }}
+                </span>
+            </h4>
+        </div>
 
-    <form method="POST" class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-        <input type="date" name="start_date" class="border rounded px-3 py-2 w-full focus:ring-2 focus:ring-blue-500" required>
-        <input type="date" name="end_date" class="border rounded px-3 py-2 w-full focus:ring-2 focus:ring-blue-500" required>
-        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded px-3 py-2 w-full">
-            Filtrele
-        </button>
-    </form>
-
-    <h5 class="text-lg font-semibold text-gray-800 mt-6 mb-4">🕒 Üretim Geçmişin</h5>
-    <div class="overflow-x-auto">
-        <table class="min-w-full table-auto border border-gray-200 text-sm">
+        <form method="POST" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="space-y-2">
+                <label for="start_date" class="block text-sm font-medium text-gray-700">Başlangıç Tarihi:</label>
+                <input type="date" name="start_date" id="start_date" 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500" required>
+            </div>
+            
+            <div class="space-y-2">
+                <label for="end_date" class="block text-sm font-medium text-gray-700">Bitiş Tarihi:</label>
+                <input type="date" name="end_date" id="end_date" 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500" required>
+            </div>
+            
+            <div class="flex items-end">
+                <button type="submit" 
+                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200">
+                    Filtrele
+                </button>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Üretim Tablosu -->
+    <div class="overflow-x-auto rounded-md">
+        <table class="min-w-full table-auto border border-gray-200 text-sm bg-white rounded-md">
             <thead>
                 <tr class="bg-gray-100 text-left text-gray-700">
                     <th class="px-4 py-2 border-b">Tarih</th>
@@ -40,29 +82,29 @@
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200">
-            {% if productions %}
-                {% for production in productions %}
-                <tr class="hover:bg-gray-50">
-                    <td class="px-4 py-2">{{ production.date.strftime('%d.%m.%Y') }}</td>
-                    <td class="px-4 py-2">{{ production.type }}</td>
-                    <td class="px-4 py-2">{{ production.row }}</td>
-                    <td class="px-4 py-2">{{ production.column }}</td>
-                    <td class="px-4 py-2">{{ production.format }}</td>
-                    <td class="px-4 py-2">
-                        <a href="{{ url_for('download', id=production.id) }}"
-                           class="text-blue-600 hover:underline font-medium">İndir</a>
-                    </td>
-                    <td class="px-4 py-2">
-                        <a href="{{ url_for('delete', id=production.id) }}"
-                           class="text-red-600 hover:underline font-medium">Sil</a>
-                    </td>
-                </tr>
-                {% endfor %}
-            {% else %}
-                <tr>
-                    <td colspan="7" class="text-center text-gray-500 px-4 py-4">Henüz üretim verisi bulunmamaktadır.</td>
-                </tr>
-            {% endif %}
+                {% if productions %}
+                    {% for production in productions %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-2">{{ production.date.strftime('%d.%m.%Y') }}</td>
+                        <td class="px-4 py-2">{{ production.type }}</td>
+                        <td class="px-4 py-2">{{ production.row }}</td>
+                        <td class="px-4 py-2">{{ production.column }}</td>
+                        <td class="px-4 py-2">{{ production.format }}</td>
+                        <td class="px-4 py-2">
+                            <a href="{{ url_for('download', id=production.id) }}"
+                               class="text-blue-600 hover:underline font-medium">İndir</a>
+                        </td>
+                        <td class="px-4 py-2">
+                            <a href="{{ url_for('delete', id=production.id) }}"
+                               class="text-red-600 hover:underline font-medium">Sil</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center text-gray-500 px-4 py-4">Bu tarihler arasında veri üretimi yapmadınız</td>
+                    </tr>
+                {% endif %}
             </tbody>
         </table>
     </div>
