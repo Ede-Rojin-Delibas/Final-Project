@@ -45,68 +45,82 @@
             </h4>
         </div>
 
+        <!-- Tarih filtreleme formu -->
         <form method="POST" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <input type="hidden" name="form_type" value="date_filter">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="space-y-2">
                 <label for="start_date" class="block text-sm font-medium text-gray-700">Başlangıç Tarihi:</label>
                 <input type="date" name="start_date" id="start_date" 
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500" required>
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                       value="{{ start_date }}" required>
             </div>
-            
+    
             <div class="space-y-2">
                 <label for="end_date" class="block text-sm font-medium text-gray-700">Bitiş Tarihi:</label>
                 <input type="date" name="end_date" id="end_date" 
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500" required>
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                       value="{{ end_date }}" required>
             </div>
-            
+    
             <div class="flex items-end">
-                <button type="submit" 
-                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200">
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md">
                     Filtrele
                 </button>
             </div>
         </form>
     </div>
-    
     <!-- Üretim Tablosu -->
     <div class="overflow-x-auto rounded-md">
-        <table class="min-w-full table-auto border border-gray-200 text-sm bg-white rounded-md">
-            <thead>
-                <tr class="bg-gray-100 text-left text-gray-700">
-                    <th class="px-4 py-2 border-b">Tarih</th>
-                    <th class="px-4 py-2 border-b">Tür</th>
-                    <th class="px-4 py-2 border-b">Satır</th>
-                    <th class="px-4 py-2 border-b">Sütun</th>
-                    <th class="px-4 py-2 border-b">Format</th>
-                    <th class="px-4 py-2 border-b">İndir</th>
-                    <th class="px-4 py-2 border-b">Sil</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200">
-                {% if productions %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="mb-4 p-4 rounded-md {{ 'bg-blue-100 text-blue-700' if category == 'info' else 'bg-red-100 text-red-700' }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    
+        {% if productions %}
+            <table class="min-w-full table-auto border border-gray-200 text-sm bg-white rounded-md">
+                <thead>
+                    <tr class="bg-gray-100 text-left text-gray-700">
+                        <th class="px-4 py-2 border-b">Tarih</th>
+                        <th class="px-4 py-2 border-b">Tür</th>
+                        <th class="px-4 py-2 border-b">Satır</th>
+                        <th class="px-4 py-2 border-b">Sütun</th>
+                        <th class="px-4 py-2 border-b">Format</th>
+                        <th class="px-4 py-2 border-b">İndir</th>
+                        <th class="px-4 py-2 border-b">Sil</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
                     {% for production in productions %}
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-4 py-2">{{ production.date.strftime('%d.%m.%Y') }}</td>
-                        <td class="px-4 py-2">{{ production.type }}</td>
-                        <td class="px-4 py-2">{{ production.row }}</td>
-                        <td class="px-4 py-2">{{ production.column }}</td>
-                        <td class="px-4 py-2">{{ production.format }}</td>
-                        <td class="px-4 py-2">
-                            <a href="{{ url_for('download', id=production.id) }}"
-                               class="text-blue-600 hover:underline font-medium">İndir</a>
-                        </td>
-                        <td class="px-4 py-2">
-                            <a href="{{ url_for('delete', id=production.id) }}"
-                               class="text-red-600 hover:underline font-medium">Sil</a>
-                        </td>
-                    </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-4 py-2">{{ production.date.strftime('%d.%m.%Y') }}</td>
+                            <td class="px-4 py-2">{{ production.type }}</td>
+                            <td class="px-4 py-2">{{ production.row }}</td>
+                            <td class="px-4 py-2">{{ production.column }}</td>
+                            <td class="px-4 py-2">{{ production.format }}</td>
+                            <td class="px-4 py-2">
+                                <a href="{{ url_for('download', id=production.id) }}"
+                                    class="text-blue-600 hover:underline font-medium">İndir</a>
+                            </td>
+                            <td class="px-4 py-2">
+                                <a href="{{ url_for('delete', id=production.id) }}"
+                                    class="text-red-600 hover:underline font-medium">Sil</a>
+                            </td>
+                        </tr>
                     {% endfor %}
-                {% else %}
-                    <tr>
-                        <td colspan="7" class="text-center text-gray-500 px-4 py-4">Bu tarihler arasında veri üretimi yapmadınız</td>
-                    </tr>
-                {% endif %}
-            </tbody>
-        </table>
+                </tbody>
+            </table>
+            {% else %}
+            <div class="text-center py-8 text-gray-500">
+                Gösterilecek veri bulunmamaktadır.
+            </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
+

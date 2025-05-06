@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Hesap Ayarları{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto mt-10 p-6 bg-white rounded-lg shadow-md">
+    <h1 class="text-2xl font-bold mb-6">Hesap Ayarları</h1>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="mb-4 p-4 rounded-md {{ 'bg-green-100 text-green-700' if category == 'success' else 'bg-red-100 text-red-700' }}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('update_profile') }}" class="space-y-6">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        
+        <!-- Kullanıcı Adı -->
+        <div>
+            <label for="username" class="block text-sm font-medium text-gray-700">Kullanıcı Adı</label>
+            <input type="text" name="username" id="username" 
+                   value="{{ current_user.username }}"
+                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+        </div>
+
+        <!-- E-posta -->
+        <div>
+            <label for="email" class="block text-sm font-medium text-gray-700">E-posta</label>
+            <input type="email" name="email" id="email" 
+                   value="{{ current_user.email }}"
+                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+        </div>
+
+        <!-- Mevcut Şifre -->
+        <div>
+            <label for="current_password" class="block text-sm font-medium text-gray-700">Mevcut Şifre</label>
+            <input type="password" name="current_password" id="current_password" required
+                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+        </div>
+
+        <!-- Yeni Şifre -->
+        <div>
+            <label for="new_password" class="block text-sm font-medium text-gray-700">Yeni Şifre</label>
+            <input type="password" name="new_password" id="new_password"
+                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+            <p class="mt-1 text-sm text-gray-500">Şifrenizi değiştirmek istemiyorsanız boş bırakın</p>
+        </div>
+
+        <div class="flex justify-between items-center">
+            <button type="submit" 
+                    class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors duration-200">
+                Değişiklikleri Kaydet
+            </button>
+            
+            <a href="{{ url_for('delete_account') }}" 
+               class="text-red-600 hover:text-red-700 font-medium">
+                Hesabı Sil
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

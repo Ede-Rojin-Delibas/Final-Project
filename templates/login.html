@@ -5,54 +5,100 @@
 {% block content %}
 <div class="flex items-center justify-center min-h-screen bg-gray-100">
     <div class="w-full max-w-md p-6 bg-white rounded-lg shadow-md">
-        <h2 class="text-2xl font-bold text-center text-gray-800">Giriş Yap</h2>
+        <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Giriş Yap</h2>
+
+        <!-- Flash Mesajları -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="mb-4 p-4 rounded-md {% if category == 'danger' %}bg-red-100 text-red-700{% elif category == 'success' %}bg-green-100 text-green-700{% else %}bg-blue-100 text-blue-700{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
 
         <!-- Giriş Formu -->
-        <form method="POST" class="mt-6 space-y-4">
+        <form method="POST" class="space-y-4">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
+            <!-- Email Field -->
             <div>
                 <label class="block text-sm font-medium text-gray-700">E-Posta Adresi</label>
-                <input type="email" name="email" required autocomplete="off"
-                       class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-200">
+                <input type="email" 
+                       name="email" 
+                       required 
+                       autocomplete="email"
+                       class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
             </div>
-
+            
+            <!-- Password Field -->
             <div>
-                <label class="block text-sm font-medium text-gray-700">Şifre</label>
-                <input type="password" name="password" required autocomplete="off"
-                       class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-200">
+                <label for="password" class="block text-sm font-medium text-gray-700">Şifre</label>
+                <div class="relative">
+                    <input type="password" 
+                           name="password" 
+                           id="password"
+                           required 
+                           autocomplete="current-password"
+                           class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    <button type="button" 
+                            onclick="togglePassword('password', 'password-toggle')"
+                            class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600 hover:text-gray-800">
+                        <span id="password-toggle">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                        </span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Remember Me & Forgot Password -->
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <input type="checkbox" 
+                           name="remember" 
+                           id="remember" 
+                           class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                    <label for="remember" class="ml-2 text-sm text-gray-600">Beni Hatırla</label>
+                </div>
             </div>
 
-            <div class="text-right">
-                <a href="#" class="text-sm text-blue-600 hover:underline">Parolanı mı unuttun?</a>
-            </div>
-
+            <!-- Login Button -->
             <button type="submit"
-                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded transition">
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded transition duration-150">
                 Giriş Yap
             </button>
         </form>
 
+        <!-- Divider -->
         <div class="flex items-center my-6">
             <hr class="flex-grow border-t border-gray-300">
             <span class="mx-4 text-gray-400 text-sm">veya</span>
             <hr class="flex-grow border-t border-gray-300">
         </div>
 
-        <!-- Google ile Giriş -->
-        <div class="text-center">
+        <!-- Google Login -->
+        <div class="mb-4">
             <a href="{{ url_for('login_google') }}"
-               class="flex items-center justify-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 rounded px-4 py-2 w-full shadow-sm">
-                <img src="{{ url_for('static', filename='google-icon.png') }}" width="20" alt="Google">
-                <span class="text-gray-700 font-medium">Google ile Devam Et</span>
+               class="flex items-center justify-center gap-2 w-full bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-2 px-4 rounded-md transition duration-150 shadow-sm">
+                <img src="{{ url_for('static', filename='images/google-icon.png') }}" width="20" alt="Google">
+                <span>Google ile Devam Et</span>
             </a>
         </div>
 
-        <!-- Kayıt Ol -->
-        <p class="text-center text-sm text-gray-600 mt-4">
+        <!-- Register Link -->
+        <p class="text-center text-sm text-gray-600">
             Hesabın yok mu?
-            <a href="{{ url_for('register') }}" class="text-blue-600 hover:underline">Kayıt Ol</a>
+            <a href="{{ url_for('register') }}" class="text-blue-600 hover:underline font-medium">
+                Kayıt Ol
+            </a>
         </p>
     </div>
 </div>
+
+<!-- Include password.js -->
+<script src="{{ url_for('static', filename='js/password.js') }}"></script>
 {% endblock %}

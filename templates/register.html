@@ -19,25 +19,67 @@
 
         <form method="POST" class="space-y-4">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            <!-- Email Field -->
             <div>
                 <label class="block text-sm font-medium mb-1">E-Posta Adresi</label>
                 <input type="email" name="email" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring focus:border-blue-300" required>
             </div>
+
+            <!-- Username Field -->
             <div>
                 <label class="block text-sm font-medium mb-1">Kullanıcı Adı</label>
                 <input type="text" name="username" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring focus:border-blue-300" required>
             </div>
+
+            <!-- Password Field -->
             <div>
-                <label class="block text-sm font-medium mb-1">Şifre</label>
-                <input type="password" name="password" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring focus:border-blue-300" required>
+                <label for="password" class="block text-sm font-medium text-gray-700">Şifre</label>
+                <div class="relative">
+                    <input type="password" 
+                           name="password" 
+                           id="password"
+                           onkeyup="validatePasswords()"
+                           required 
+                           class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring focus:border-blue-300">
+                    <button type="button" 
+                            onclick="togglePassword('password', 'password-toggle')"
+                            class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600 hover:text-gray-800">
+                        <span id="password-toggle">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                        </span>
+                    </button>
+                </div>
             </div>
+
+            <!-- Confirm Password Field -->
             <div>
-                <label class="block text-sm font-medium mb-1">Şifre (Tekrar)</label>
-                <input type="password" name="confirm_password" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring focus:border-blue-300" required>
+                <label for="confirm_password" class="block text-sm font-medium text-gray-700">Şifreyi Tekrar Girin</label>
+                <div class="relative">
+                    <input type="password" 
+                           name="confirm_password" 
+                           id="confirm_password"
+                           onkeyup="validatePasswords()"
+                           required 
+                           class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring focus:border-blue-300">
+                    <button type="button" 
+                            onclick="togglePassword('confirm_password', 'confirm-password-toggle')"
+                            class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600 hover:text-gray-800">
+                        <span id="confirm-password-toggle">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                        </span>
+                    </button>
+                </div>
+                <div id="password-match-message"></div>
             </div>
             <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">Kayıt Ol</button>
         </form>
-
         <hr class="my-6">
 
         <div class="text-center text-sm text-gray-600">
@@ -46,4 +88,6 @@
         </div>
     </div>
 </div>
+<!-- Include password.js -->
+<script src="{{ url_for('static', filename='/password.js') }}"></script>
 {% endblock %}

@@ -7,7 +7,7 @@ from flask_migrate import Migrate
 import numpy as np
 import os
 from io import BytesIO
-from datetime import datetime
+from datetime import datetime,timedelta
 import random
 import string
 from faker import Faker
@@ -23,6 +23,11 @@ import secrets
 from datetime import timedelta
 from flask import send_file
 import uuid
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_talisman import Talisman
+from itsdangerous import TimedSerializer
+
 
 app = Flask(__name__)
 csrf = CSRFProtect(app)
@@ -44,6 +49,28 @@ migrate = Migrate(app, db)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"]
+)
+
+Talisman(app, content_security_policy=None)
+
+class LoginAttempt(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), nullable=False)
+    ip_address = db.Column(db.String(45), nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    success = db.Column(db.Boolean, default=False)
+
+@app.after_request
+def add_security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    return response
+
 # CSRF hata yakalayıcı ekleyin
 @app.errorhandler(400)
 def handle_csrf_error(e):
@@ -56,7 +83,8 @@ def allowed_file(filename):
 
 # Kullanıcı Modeli
 class User(db.Model, UserMixin):  # UserMixin ekledik
-    __tablename__ = 'user' 
+    __table_args__={'extend_existing': True}  # Mevcut tabloyu genişlet
+    __tablename__ = 'user'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100))
     username = db.Column(db.String(80), nullable=False)
@@ -65,6 +93,21 @@ class User(db.Model, UserMixin):  # UserMixin ekledik
     is_admin = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  
     profile_picture = db.Column(db.String(120), nullable=True)
+    session_token = db.Column(db.String(100), 
+                              unique=True,
+                              nullable=True,
+                              name='uq_user_session_token'  
+                              )
+
+    def get_session_token(self):
+        if not self.session_token:
+            self.session_token = secrets.token_urlsafe(32)
+            db.session.commit()
+        return self.session_token
+
+    def invalidate_session_token(self):
+        self.session_token = secrets.token_urlsafe(32)
+        db.session.commit()
 
     def set_password(self, password):
         self.password_hash = bcrypt.generate_password_hash(password)  # Şifre hashleme
@@ -261,31 +304,70 @@ def register():
 
 # Giriş Yapma
 @app.route('/login', methods=['GET', 'POST'])
+@limiter.limit("5 per minute")  # 1 dakikada en fazla 5 deneme
 def login():
     if request.method == 'POST':
         email = request.form['email']
         password = request.form['password']
+        ip_address = request.remote_addr  # Kullanıcının IP adresini al
 
-        if not email or not password:
-            flash("E-posta ve şifre zorunludur!", "danger")
+        # Başarısız giriş denemelerini kontrol et
+        failed_attempts = LoginAttempt.query.filter_by(
+            email=email,
+            ip_address=ip_address,
+            success=False,
+        ).filter(
+            LoginAttempt.timestamp >= (datetime.utcnow() - timedelta(minutes=15))
+        ).count()
+
+        if failed_attempts >= 5:
+            flash("Çok fazla başarısız deneme. Lütfen 15 dakika sonra tekrar deneyin.", "danger")
             return redirect(url_for('login'))
         
         user = User.query.filter_by(email=email).first()  # Email ile sorgula
-        print("Kullanıcı nesnesi:", user)  # Test çıktısı
+        attempt = LoginAttempt(email=email, ip_address=ip_address, success=False)
+
+        # Form validasyonu
+        if not email or not password:
+            flash("E-posta ve şifre zorunludur!", "danger")
+            db.session.add(attempt)
+            db.session.commit()
+            return redirect(url_for('login'))
+        
+        remember = request.form.get('remember', False) == 'on'
+        if user and bcrypt.check_password_hash(user.password_hash, password):
+            attempt.success = True
+            db.session.add(attempt)
+            login_user(user, remember=remember)
+            session.permanent = True
+            flash(f'Hoş geldiniz, {user.username}!', 'success')
+            next_page = request.args.get('next')
+            db.session.commit()
+            return redirect(next_page) if next_page else redirect(url_for('home'))
+        else:
+            db.session.add(attempt)
+            if user:
+                flash("Hatalı şifre! Lütfen tekrar deneyin.", "danger")
+            else:
+                flash("Bu email adresi ile kayıtlı bir hesap bulunamadı!", "danger")
+            db.session.commit()
+            return redirect(url_for('login'))
+        # print("Kullanıcı nesnesi:", user)  # Test çıktısı
         # if user:
         #     print("Veritabanındaki hash:", user.password_hash)  # Kullanıcının hash'lenmiş şifresini gör
         #     print("Girilen şifre:", password)  # Kullanıcının girdiği şifreyi gör
         #     print("Hash Check Result:", bcrypt.check_password_hash(user.password_hash, password))  # Doğrulama sonucunu yazdır
         
-        if user and bcrypt.check_password_hash(user.password_hash, password):  # Hash doğrulama
-            session.clear()               #Session fixation önle
-            session.permanent = True     #Oturumu zamanlayalım
-            login_user(user)
-            flash('Giriş başarılı!', 'success')
-            return redirect(url_for('generate_data'))
+        
+        # if user and bcrypt.check_password_hash(user.password_hash, password):  # Hash doğrulama
+        #     session.clear()               #Session fixation önle
+        #     session.permanent = True     #Oturumu zamanlayalım
+        #     login_user(user)
+        #     flash('Giriş başarılı!', 'success')
+        #     return redirect(url_for('generate_data'))
             
-        else:
-            flash('Giriş başarısız. Lütfen bilgilerinizi kontrol edin.', 'danger')
+        # else:
+        #     flash('Giriş başarısız. Lütfen bilgilerinizi kontrol edin.', 'danger')
     
     return render_template('login.html')
 login_manager.login_view = 'login'  
@@ -504,7 +586,7 @@ def profile():
 
     # Üretim verilerini sorgula
     productions_query = Production.query.filter_by(user_id=current_user.id)
-    message = None
+    filtered = False  # Filtreleme yapılıp yapılmadığını kontrol etmek için
     
     if request.method == 'POST':
         form_type = request.form.get('form_type')
@@ -558,21 +640,28 @@ def profile():
                         Production.date >= start_date,
                         Production.date <= end_date
                     )
+                    filtered = True  # Filtreleme yapıldığını işaretle
                     print("Filtrelenmiş Veriler:", productions_query.all())
+                else:
+                    flash("Lütfen geçerli bir tarih aralığı girin.", "warning")
             except ValueError:
                 flash("Geçersiz tarih formatı. Lütfen doğru bir tarih girin.", "warning")
 
     # Üretimleri tarihe göre sırala
     productions = productions_query.order_by(Production.date.desc()).all()
-    # Eğer filtreleme sonucunda veri yoksa mesaj ayarla
-    if not productions:
-        message = "Bu tarihler arasında veri üretimi yapmadınız."
     total_production = len(productions)
+
+    # Filtreleme yapıldıysa ve sonuç boşsa mesaj göster
+    if filtered and not productions:
+        flash("Bu tarihler arasında veri üretimi yapmadınız.", "info")
 
     return render_template('profile.html',
                          current_user=current_user,
                          productions=productions,
-                         total_production=total_production)
+                         total_production=total_production,
+                         start_date=request.form.get('start_date', ''),
+                         end_date=request.form.get('end_date', ''))
+
 @app.route('/download/<int:id>')
 def download(id):
     production = Production.query.get_or_404(id)
@@ -585,6 +674,100 @@ def delete(id):
     db.session.delete(production)
     db.session.commit()
     return redirect(url_for('profile'))
+
+@app.route('/account/settings')
+@login_required
+def account_settings():
+    return render_template('account_settings.html')
+
+@app.route('/account/delete', methods=['GET', 'POST'])
+@login_required
+def delete_account():
+    if request.method == 'POST':
+        # Kullanıcının ürettiği verileri sil
+        Production.query.filter_by(user_id=current_user.id).delete()
+        
+        # Kullanıcı profilini sil
+        db.session.delete(current_user)
+        db.session.commit()
+        
+        # Oturumu sonlandır
+        logout_user()
+        flash('Hesabınız başarıyla silindi.', 'success')
+        return redirect(url_for('home'))
+    
+    return render_template('delete_account.html')
+
+@app.route('/account/update-profile', methods=['POST'])
+@login_required
+def update_profile():
+    if request.method == 'POST':
+        # Email güncelleme düzeltmesi
+        new_email = request.form.get('email')
+        if new_email and new_email != current_user.email:
+            if User.query.filter_by(email=new_email).first():  # email() yerine email=
+                flash('Bu email adresi zaten kullanılıyor!', 'danger')
+                return redirect(url_for('account_settings'))
+            current_user.email = new_email
+            
+        # Username güncelleme
+        new_username = request.form.get('username')
+        if new_username and new_username != current_user.username:
+            if User.query.filter_by(username=new_username).first():
+                flash('Bu kullanıcı adı zaten kullanılıyor!', 'danger')
+                return redirect(url_for('account_settings'))
+            current_user.username = new_username
+
+        # Email güncelleme
+        new_email = request.form.get('email')
+        if new_email and new_email != current_user.email:
+            if User.query.filter_by(email=new_email).first():
+                flash('Bu email adresi zaten kullanılıyor!', 'danger')
+                return redirect(url_for('account_settings'))
+            current_user.email = new_email
+
+        # Yeni şifre kontrolü ve güncelleme
+        new_password = request.form.get('new_password')
+        if new_password:
+            is_strong, message = is_password_strong(new_password)
+            if not is_strong:
+                flash(message, 'danger')
+                return redirect(url_for('account_settings'))
+            current_user.set_password(new_password)
+
+        try:
+            db.session.commit()
+            flash('Profil bilgileriniz başarıyla güncellendi!', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash('Bir hata oluştu: ' + str(e), 'danger')
+
+        return redirect(url_for('account_settings'))
+@app.context_processor
+def utility_processor():
+    return {
+        'now': datetime.now(),
+        'datetime': datetime,
+        'current_year': datetime.now().year
+    }
+
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        user = User.query.filter_by(email=email).first()
+        
+        if user:
+            # Şifre sıfırlama token'ı oluştur
+            token = user.get_reset_token()
+            
+            # Mail gönderme işlemi burada yapılacak
+            flash('Şifre sıfırlama talimatları email adresinize gönderildi.', 'success')
+            return redirect(url_for('login'))
+        else:
+            flash('Bu email adresi ile kayıtlı bir hesap bulunamadı.', 'danger')
+    
+    return render_template('forgot_password.html')
 
 if __name__ == "__main__":
     with app.app_context():
