@@ -27,6 +27,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_talisman import Talisman
 from itsdangerous import TimedSerializer
+from itsdangerous import URLSafeTimedSerializer
 
 
 app = Flask(__name__)
@@ -115,6 +116,18 @@ class User(db.Model, UserMixin):  # UserMixin ekledik
     def check_password(self, password):
         return bcrypt.check_password_hash(self.password_hash, password)  # Şifre doğrulama
 
+    def get_reset_token(self, expires_sec=1800):
+        s = URLSafeTimedSerializer(app.config['SECRET_KEY'])
+        return s.dumps({'user_id': self.id}, salt='password-reset-salt')
+
+    @staticmethod
+    def verify_reset_token(token):
+        s = URLSafeTimedSerializer(app.config['SECRET_KEY'])
+        try:
+            user_id = s.loads(token, salt='password-reset-salt', max_age=1800)['user_id']
+        except:
+            return None
+        return User.query.get(user_id)
 
 @login_manager.user_loader
 def load_user(user_id):
