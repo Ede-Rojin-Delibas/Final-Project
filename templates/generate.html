@@ -7,19 +7,68 @@
     <h2 class="text-2xl font-semibold text-center mb-6">Sentetik Veri Üretimi</h2>
 
     {% if current_user.is_authenticated %}
-        <form action="{{ url_for('generate_data') }}" method="POST" class="space-y-5">
+        <!--Mod Seçimi-->
+        <div class="flex justify-end mb-4">
+            <label class="flex items-center space-x-2 cursor-pointer">
+                <span class="text-sm text-gray-600">Gelişmiş Mod</span>
+                <div class="relative">
+                    <input type="checkbox" id="advancedMode" class="sr-only peer">
+                    <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-blue-600 after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+                </div>
+            </label>
+        </div>
+
+        <form id="generateForm" action="{{ url_for('generate_data') }}" method="POST" class="space-y-5">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Satır Sayısı</label>
-                <input type="number" name="rows" min="1" required class="w-full border border-gray-300 rounded-lg px-3 py-2">
+            <!-- Satır ve Sütun Girişi -->
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Satır Sayısı</label>
+                    <input type="number" name="rows" min="1" max="1000000" required 
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Sütun Sayısı</label>
+                    <input type="number" name="columns" min="1" max="50" id="columnsInput" required 
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                </div>
+            </div>
+            <!-- Sütun sayısı girişinden sonra -->
+            <div id="dataTypeSelections" class="mt-4">
+                <!-- Veri türü seçimleri buraya dinamik olarak eklenecek -->
+            </div>
+            <!-- Basit Mod -->
+            <div id="simpleMode">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Veri Kategorisi</label>
+                    <select id="categorySelect" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                        <option value="">Kategori Seçin</option>
+                        {% for category in categories %}
+                            <option value="{{ category }}">{{ category }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div id="dataTypesContainer" class="space-y-2"></div>
             </div>
 
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Sütun Sayısı</label>
-                <input type="number" name="columns" min="1" id="columnsInput" required class="w-full border border-gray-300 rounded-lg px-3 py-2">
+            <!-- Gelişmiş Mod -->
+            <div id="advancedMode" class="hidden">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Gelişmiş Veri Türü Seçimi</label>
+                    <div id="advancedDataTypesContainer" class="space-y-4">
+                        <!-- JavaScript ile doldurulacak -->
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <button type="button" id="previewButton" 
+                            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                        Önizleme
+                    </button>
+                </div>
             </div>
 
+            <!-- Dosya Formatı -->
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Dosya Formatı</label>
                 <select name="format" class="w-full border border-gray-300 rounded-lg px-3 py-2">
@@ -28,13 +77,29 @@
                 </select>
             </div>
 
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Veri Türleri</label>
-                <div id="dataTypesContainer" class="space-y-2"></div>
+            <!-- Önizleme Tablosu -->
+            <div id="previewTable" class="mt-6 hidden">
+                <h3 class="text-lg font-semibold mb-2">Önizleme (İlk 5 Satır)</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead id="previewHeader"></thead>
+                        <tbody id="previewBody"></tbody>
+                    </table>
+                </div>
+                
+                <!-- İndirme Butonu -->
+                <div class="mt-4 flex justify-end">
+                    <button type="submit" class="download-btn bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                        Dosyayı İndir
+                    </button>
+                </div>
             </div>
 
-            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg">Veri Üret</button>
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg">
+                Veri Üret
+            </button>
         </form>
+
     {% else %}
         <div class="text-center mt-8">
             <p class="mb-4 text-gray-700">Veri üretmek için lütfen giriş yapın veya kayıt olun.</p>
@@ -44,39 +109,6 @@
     {% endif %}
 </div>
 
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const columnsInput = document.getElementById("columnsInput");
-        if (columnsInput) {
-            columnsInput.addEventListener("input", function() {
-                const columns = parseInt(this.value) || 0;
-                const container = document.getElementById("dataTypesContainer");
-                container.innerHTML = "";
-
-                for (let i = 0; i < columns; i++) {
-                    const div = document.createElement("div");
-                    div.className = "flex flex-col";
-
-                    const label = document.createElement("label");
-                    label.className = "text-sm font-medium text-gray-700 mb-1";
-                    label.textContent = `Sütun ${i+1} Veri Türü`;
-
-                    const select = document.createElement("select");
-                    select.name = `data_type_${i}`;
-                    select.className = "border border-gray-300 rounded-lg px-3 py-2";
-                    select.innerHTML = `
-                        <option value="integer">Tamsayı</option>
-                        <option value="float">Ondalık</option>
-                        <option value="text">Metin</option>
-                        <option value="date">Tarih</option>
-                    `;
-
-                    div.appendChild(label);
-                    div.appendChild(select);
-                    container.appendChild(div);
-                }
-            });
-        }
-    });
-</script>
+<!-- JavaScript kodu ayrı bir dosyaya taşınacak -->
+<script src="{{ url_for('static', filename='js/generate.js') }}"></script>
 {% endblock %}
