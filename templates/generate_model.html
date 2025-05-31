@@ -3,32 +3,142 @@
 {% block title %}Model Tabanlı Veri Üretimi{% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto mt-10 p-6 bg-white shadow-md rounded-xl">
+<div class="max-w-4xl mx-auto mt-10 p-6 bg-white shadow-md rounded-xl">
     <h2 class="text-2xl font-semibold text-center mb-6">Model Tabanlı Sentetik Veri Üretimi</h2>
 
     {% if current_user.is_authenticated %}
-        <form action="{{ url_for('generate_model_data') }}" method="POST" enctype="multipart/form-data" class="space-y-5">
+        <form id="modelForm" method="POST" enctype="multipart/form-data">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Örnek Veri Seti (CSV)</label>
-                <input type="file" name="dataset" accept=".csv" required class="w-full border border-gray-300 rounded-lg px-3 py-2">
+            <!-- Model Seçimi -->
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <h3 class="text-lg font-medium text-gray-900 mb-3">Model Seçimi</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Model Tipi</label>
+                        <select name="model_type" id="modelType" class="w-full border border-gray-300 rounded-lg px-3 py-2" required>
+                            <option value="">Model Seçin</option>
+                            <option value="ctgan">CTGAN</option>
+                            <option value="tvae">TVAE</option>
+                            <option value="copulagan">CopulaGAN</option>
+                            <option value="gaussiancopula">Gaussian Copula</option>
+                        </select>
+                    </div>
+                    <div id="modelDescription" class="text-sm text-gray-600 p-3 bg-blue-50 rounded-lg">
+                        Model seçiniz...
+                    </div>
+                </div>
             </div>
 
+            <!-- Model Parametreleri -->
+            <div id="modelParams" class="bg-gray-50 p-4 rounded-lg hidden">
+                <h3 class="text-lg font-medium text-gray-900 mb-3">Model Parametreleri</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Epochs</label>
+                        <input type="number" name="epochs" min="1" value="100" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Batch Size</label>
+                        <input type="number" name="batch_size" min="1" value="500" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Learning Rate</label>
+                        <input type="number" name="learning_rate" min="0.0001" max="0.1" step="0.0001" value="0.001" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Generator Dims</label>
+                        <input type="text" name="generator_dims" value="256,256" class="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="256,256">
+                        <p class="mt-1 text-sm text-gray-500">Virgülle ayrılmış sayılar (örn: 256,256)</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Veri Yükleme -->
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <h3 class="text-lg font-medium text-gray-900 mb-3">Veri Yükleme</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Örnek Veri Seti (CSV)</label>
+                        <input type="file" name="file" id="fileInput" accept=".csv" required class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                        <p class="mt-1 text-sm text-gray-500">Eğitim için kullanılacak örnek veri seti</p>
+                    </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Çıktı Formatı</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Üretilecek Satır Sayısı</label>
+                        <input type="number" name="num_rows" min="1" required class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Çıktı Ayarları -->
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <h3 class="text-lg font-medium text-gray-900 mb-3">Çıktı Ayarları</h3>
+            <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Çıktı Formatı</label>
                 <select name="format" class="w-full border border-gray-300 rounded-lg px-3 py-2">
                     <option value="csv">CSV</option>
                     <option value="xlsx">XLSX</option>
                 </select>
             </div>
-
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Üretilecek Satır Sayısı</label>
-                <input type="number" name="num_rows" min="1" required class="w-full border border-gray-300 rounded-lg px-3 py-2">
             </div>
 
-            <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg">Model Tabanlı Veri Üret</button>
+            <!-- Üretim Butonu -->
+            <button type="button" id="generateButton" onclick="generateModelData()" 
+                class="w-full mt-6 px-8 py-4 text-xl font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg shadow-lg hover:from-purple-700 hover:to-indigo-700 transform hover:-translate-y-1 transition-all duration-200 flex items-center justify-center gap-3 border-2 border-purple-700 hover:border-purple-800 focus:ring-4 focus:ring-purple-300">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+                Model Tabanlı Veri Üret
+            </button>
+
+            <!-- Önizleme ve Sonuçlar -->
+            <div id="results" class="hidden space-y-4">
+                <!-- PII Kolonları Uyarı ve Seçim Kutusu -->
+                <div id="piiColumnsBox" class="hidden mb-4"></div>
+                <!-- Kalite Metrikleri -->
+                <div id="qualityMetrics" class="bg-blue-50 p-4 rounded-lg">
+                    <h3 class="text-lg font-medium text-gray-900 mb-3">Kalite Metrikleri</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-white p-3 rounded-lg shadow">
+                            <h4 class="font-medium text-gray-700">İstatistiksel Benzerlik</h4>
+                            <p id="statisticalScore" class="text-2xl font-bold text-blue-600">-</p>
+                        </div>
+                        <div class="bg-white p-3 rounded-lg shadow">
+                            <h4 class="font-medium text-gray-700">Sütun Şekli</h4>
+                            <p id="columnShapeScore" class="text-2xl font-bold text-blue-600">-</p>
+                        </div>
+                        <div class="bg-white p-3 rounded-lg shadow">
+                            <h4 class="font-medium text-gray-700">İkili Korelasyon</h4>
+                            <p id="correlationScore" class="text-2xl font-bold text-blue-600">-</p>
+                        </div>
+                        <div class="bg-white p-3 rounded-lg shadow">
+                            <h4 class="font-medium text-gray-700">ML Etkinliği</h4>
+                            <p id="mlEfficacyScore" class="text-2xl font-bold text-blue-600">-</p>
+                        </div>
+                    </div>
+                    <pre id="metricsDebugBox" class="hidden bg-gray-100 text-xs p-2 rounded mt-2"></pre>
+                </div>
+
+                <!-- Önizleme Tablosu -->
+                <div id="previewTable" class="mt-4"></div>
+
+                <!-- İndirme ve Paylaşma Butonları -->
+                <div class="flex gap-4 mt-4">
+                    <button id="downloadButton" type="button" class="hidden flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                        İndir
+                    </button>
+                    <button id="shareButton" type="button" class="hidden flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
+                        </svg>
+                        Paylaş
+                    </button>
+                </div>
+                <div id="shareLinkBox" class="hidden mt-2"></div>
+            </div>
         </form>
     {% else %}
         <div class="text-center mt-8">
@@ -37,4 +147,10 @@
         </div>
     {% endif %}
 </div>
+
+<!-- Toast Bildirimleri -->
+<div id="toastContainer" class="fixed bottom-6 right-6 z-50"></div>
+
+<!-- JavaScript -->
+<script src="{{ url_for('static', filename='js/model_generate.js') }}"></script>
 {% endblock %}
