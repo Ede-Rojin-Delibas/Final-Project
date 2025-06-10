@@ -98,34 +98,32 @@
                 </a>
             </div>
         
-            <!-- Veri Analizi -->
+            <!-- Veri Kalitesi Değerlendir -->
             <div class="bg-white p-8 rounded-xl shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
                 <div class="text-4xl mb-4 bg-green-100 w-16 h-16 rounded-full flex items-center justify-center text-green-600">📊</div>
-                <h3 class="text-xl font-semibold mb-4">Veri Analizi</h3>
-                
+                <h3 class="text-xl font-semibold mb-4">Veri Kalitesi Değerlendir</h3>
                 <div class="space-y-3 mb-6">
                     <div class="flex items-center text-gray-600">
                         <svg class="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                         </svg>
-                        <span>İstatistiksel Analizler</span>
+                        <span>Gerçek ve sentetik veri karşılaştırması</span>
                     </div>
                     <div class="flex items-center text-gray-600">
                         <svg class="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                         </svg>
-                        <span>Görsel Raporlama</span>
+                        <span>Kalite metrikleri ve analiz</span>
                     </div>
                     <div class="flex items-center text-gray-600">
                         <svg class="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                         </svg>
-                        <span>Veri Kalitesi Kontrolü</span>
+                        <span>Görsel ve tablo önizleme</span>
                     </div>
                 </div>
-        
-                <a href="#" class="inline-flex items-center text-green-600 hover:text-green-700 font-medium">
-                    Analiz Et
+                <a href="{{ url_for('analyze_quality_page') }}" class="inline-flex items-center text-green-600 hover:text-green-700 font-medium">
+                    Kaliteyi Değerlendir
                     <svg class="w-5 h-5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                     </svg>

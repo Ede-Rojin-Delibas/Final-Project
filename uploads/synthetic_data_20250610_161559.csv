@@ -1,0 +1,51 @@
+﻿isim,soyisim,eposta,Gender,Age,Department,Attendance (%),Final_Score,Assignments_Avg,Quizzes_Avg,Participation_Score,Projects_Score,Total_Score,Grade,Study_Hours_per_Week,Extracurricular_Activities,Internet_Access_at_Home,Parent_Education_Level,Family_Income_Level,Stress_Level (1-10),Sleep_Hours_per_Night
+Emma,Davis,sdv-id-zezHbO,Male,23,Engineering,90.8,64.82,81.83,54.88,37.36824249986564,59.2,63.05624416140333,D,5.5,No,Yes,,Medium,7,6.4
+Maria,Jones,sdv-id-HuoBpc,Female,18,Engineering,98.41,68.13,51.66,63.88,21.6133108714008,98.98,73.55295757301397,C,19.9,No,Yes,PhD,Medium,8,4.9
+Liam,Jones,sdv-id-qxODZk,Female,21,Mathematics,84.56,82.56,66.19,87.83,61.59308601096654,58.46,75.16430266553782,B,20.5,Yes,Yes,PhD,Low,6,6.0
+Liam,Davis,sdv-id-KpjvYN,Male,24,Mathematics,66.38,63.0,99.68,58.36,9.197810931776749,65.56,73.0478067812679,C,23.5,No,No,,High,8,7.0
+Maria,Jones,sdv-id-dVUZuq,Male,21,CS,64.14,42.94,72.02,83.53,77.74658670369251,59.08,61.70900265305767,B,6.7,No,Yes,Bachelor's,Low,8,8.9
+Sara,Johnson,sdv-id-DxrTyW,Female,22,Engineering,65.88,99.25,74.26,61.33,80.5347483878784,92.34,82.2951977354191,D,19.3,No,No,Bachelor's,Low,6,8.4
+Liam,Johnson,sdv-id-gcTudf,Female,18,Engineering,50.3,55.0,72.31,99.38,96.1436962020111,51.23,66.01931887398416,C,18.2,Yes,No,Bachelor's,Medium,10,7.1
+Emma,Williams,sdv-id-yIbpJq,Female,18,CS,69.8,74.9,74.59,96.33,5.025760689584638,54.79,67.03096943379626,F,18.9,Yes,Yes,,Low,8,8.1
+Ali,Davis,sdv-id-ljfiIe,Female,24,Mathematics,63.04,69.38,60.47,94.11,0.6583789398180004,53.23,62.19414110603553,B,27.7,Yes,Yes,High School,Medium,6,4.5
+Maria,Smith,sdv-id-ETxlJE,Male,20,Business,74.79,45.0,68.02,96.63,25.461965280259072,51.23,55.53127085066945,F,24.4,No,Yes,High School,High,5,5.2
+John,Johnson,sdv-id-MkcUgU,Female,21,CS,69.13,40.81,68.14,53.57,40.84874080930944,56.42,52.497931435981265,B,15.3,No,Yes,Bachelor's,Low,1,6.2
+Ali,Williams,sdv-id-NKnuxo,Female,21,Mathematics,57.03,64.38,91.56,72.84,42.52374792722223,96.27,73.20148792948272,D,16.6,Yes,No,,Low,3,4.2
+Ahmed,Davis,sdv-id-mqMetl,Female,18,CS,53.91,72.77,78.18,72.76,63.27510145204497,61.83,74.69144308175028,C,10.8,No,No,PhD,Medium,9,5.0
+Omar,Brown,sdv-id-QXJaKW,Female,18,Business,77.54,61.52,50.25,91.45,29.904388503896286,93.04,71.17182958153661,D,16.8,No,Yes,Master's,Low,9,5.3
+Maria,Brown,sdv-id-vikliN,Female,19,Business,62.03,90.63,61.72,78.61,70.085847652541,92.86,78.92855413184881,D,10.2,Yes,Yes,PhD,Low,10,4.6
+Sara,Johnson,sdv-id-YDNOEi,Male,18,Business,83.49,58.22,59.61,96.29,14.989483026399427,70.76,67.78886351458836,B,17.6,No,No,PhD,Low,2,4.4
+Ali,Brown,sdv-id-mOcIBA,Male,21,CS,73.51,94.85,94.77,71.84,78.55344037249877,54.4,78.58637591722848,C,23.6,Yes,No,High School,High,4,8.7
+Liam,Smith,sdv-id-BnTIqT,Female,19,Engineering,70.97,63.15,70.44,98.56,92.41716091358475,56.41,69.05283466429569,B,29.4,No,No,PhD,High,4,4.7
+Ahmed,Brown,sdv-id-lvVnvQ,Male,20,CS,98.32,85.73,89.12,92.75,52.346908676571665,75.14,75.83539192935145,C,16.7,No,No,Bachelor's,High,5,5.0
+John,Smith,sdv-id-BMyEIX,Male,23,Business,56.89,94.67,66.28,67.52,33.47296927476504,88.88,79.41213953063153,C,6.9,Yes,Yes,High School,High,6,5.0
+Ahmed,Johnson,sdv-id-TxXHek,Male,21,Engineering,88.01,77.23,98.14,84.92,39.41109677520099,64.6,68.89651137530075,D,24.4,No,No,Master's,Medium,8,4.6
+Emma,Williams,sdv-id-scmUbA,Female,22,Mathematics,97.28,72.59,50.75,81.15,17.357012432376262,98.03,74.69056205372684,C,6.3,Yes,Yes,Master's,High,1,4.7
+Omar,Brown,sdv-id-Bckpfw,Male,21,Mathematics,62.24,89.95,88.69,68.15,28.536842124157467,95.38,82.6369578057919,C,26.0,Yes,Yes,PhD,Low,2,8.1
+John,Brown,sdv-id-hLzerX,Female,22,CS,94.11,99.05,66.92,52.2,26.43364459254117,99.92,92.58329610883877,C,25.3,Yes,Yes,Bachelor's,Medium,4,4.4
+Emma,Smith,sdv-id-kKPLwP,Male,18,Mathematics,76.0,93.46,84.38,76.87,13.906284862425466,83.63,77.80693100703809,C,12.8,Yes,No,PhD,Low,4,4.8
+Ali,Smith,sdv-id-ZJJRro,Female,18,Mathematics,80.87,82.08,58.41,76.01,52.65490514186402,50.24,63.606684211600864,C,5.6,No,Yes,Bachelor's,High,6,8.7
+John,Williams,sdv-id-GbSMUY,Male,22,Mathematics,99.21,63.18,75.47,71.59,56.11774659266861,90.82,75.6079405636573,D,15.5,No,No,Bachelor's,High,4,7.0
+Maria,Smith,sdv-id-PyvMLx,Female,18,CS,68.71,65.96,53.37,65.22,20.30489160719625,68.55,61.96774256749575,D,18.8,No,Yes,,Medium,10,4.3
+Emma,Brown,sdv-id-XloSDt,Female,21,Business,98.34,46.64,78.81,54.62,51.10773737438694,61.83,60.325620884992006,F,9.8,Yes,No,,Low,2,8.0
+Ali,Williams,sdv-id-JnjVyP,Male,18,Business,52.12,45.61,79.75,68.09,60.05328082841201,70.84,70.78634831763429,C,11.9,No,No,Bachelor's,High,8,5.4
+Ahmed,Brown,sdv-id-lCqtHz,Female,21,CS,79.09,65.39,99.06,81.56,44.94049037357074,96.0,81.85597087122082,C,26.2,No,No,,Low,3,6.1
+Omar,Williams,sdv-id-XKYLvl,Female,23,Mathematics,63.27,77.03,78.23,72.08,29.019664967109566,69.1,75.21739741045901,D,29.6,Yes,Yes,PhD,Medium,3,6.9
+Ahmed,Smith,sdv-id-PtyxDi,Male,23,Engineering,95.78,90.68,55.77,74.62,64.92436739266269,57.25,69.49944682998816,C,28.5,No,No,Bachelor's,High,7,7.4
+Sara,Davis,sdv-id-dIjQFR,Female,22,Engineering,58.59,97.61,92.03,98.65,20.13107091536217,81.62,85.16451025522835,D,13.1,No,Yes,,Low,6,5.6
+John,Jones,sdv-id-uYbwyG,Female,23,Mathematics,54.91,76.81,98.88,72.52,26.57538535543392,57.41,79.34041025634684,C,10.5,Yes,No,Master's,Medium,4,7.9
+Maria,Jones,sdv-id-cQMgTC,Female,19,Engineering,64.32,75.92,51.82,66.42,70.66989464016682,82.01,67.7914118536199,C,27.6,No,No,Bachelor's,High,2,4.1
+Ali,Brown,sdv-id-zhGLda,Male,19,Mathematics,84.63,60.94,80.68,95.06,14.020362356749436,59.52,71.31209667446753,C,26.3,Yes,No,Master's,Low,7,8.5
+John,Jones,sdv-id-gBhyGU,Male,22,Mathematics,66.4,93.46,83.25,97.84,14.129868816440169,70.71,82.01751492303575,C,17.0,No,Yes,High School,High,1,6.8
+Maria,Davis,sdv-id-DmZGuy,Female,22,CS,92.5,86.37,86.56,61.03,88.29197818779478,99.06,85.42249032033489,C,9.7,Yes,Yes,PhD,Low,4,6.1
+Ali,Williams,sdv-id-TmeWoF,Male,19,Engineering,89.6,80.65,89.52,71.63,4.191383966988088,79.42,76.29170383441922,D,17.7,No,No,High School,Medium,10,7.0
+Ahmed,Williams,sdv-id-bDlmfF,Male,21,Mathematics,97.59,81.13,88.48,59.27,70.33688902038797,75.28,74.20383264424105,C,19.0,Yes,Yes,High School,Medium,5,5.9
+Liam,Jones,sdv-id-JhVhEu,Male,21,CS,96.77,44.05,91.89,76.72,58.92018996700994,86.08,73.9701903344452,C,8.7,No,No,Bachelor's,Low,8,4.1
+Ali,Davis,sdv-id-fNKWfC,Female,24,Mathematics,91.51,54.39,91.06,57.51,68.44497548825285,68.28,69.61914156540111,D,16.6,Yes,No,Bachelor's,High,6,4.3
+Omar,Williams,sdv-id-dbeuSM,Male,20,Engineering,88.03,60.21,82.86,84.51,68.31901262408492,55.13,65.63953021790103,C,23.6,No,No,,High,6,5.2
+Sara,Smith,sdv-id-rrOCmU,Female,20,Engineering,80.11,49.53,77.78,90.46,43.4401706088314,64.41,63.852390172783615,C,20.2,Yes,No,Master's,High,10,4.7
+Sara,Davis,sdv-id-oHwZzn,Male,21,CS,73.94,64.32,53.46,66.95,32.10614182837225,79.44,59.96167895928031,B,17.8,No,Yes,Bachelor's,High,7,7.9
+Emma,Davis,sdv-id-WcruLu,Male,20,CS,80.06,52.46,69.93,59.25,50.59155214865123,54.11,59.678511854930164,F,8.4,No,No,PhD,Medium,7,5.7
+Ali,Johnson,sdv-id-cYiaUH,Female,18,Business,61.74,57.52,88.45,56.75,64.87754582627939,61.42,64.7391634159297,D,29.6,No,Yes,,Medium,2,7.6
+Emma,Davis,sdv-id-WpUqNB,Male,24,Business,96.97,87.75,70.47,69.07,30.93032643733914,82.43,66.7873912759818,C,15.2,No,No,Master's,Medium,2,6.2
+Liam,Johnson,sdv-id-IjkUkf,Female,23,Business,76.18,71.54,86.15,70.18,49.47640970912632,80.51,72.60851425577809,C,15.3,Yes,No,Master's,Medium,5,7.9

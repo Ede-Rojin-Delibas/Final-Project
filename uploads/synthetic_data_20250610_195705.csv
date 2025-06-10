@@ -1,0 +1,61 @@
+﻿State,Avg Daily Distance (km),Brand,Model,Price (INR),Year of Manufacture,Engine Capacity (cc),Fuel Type,Mileage (km/l),Owner Type,Registration Year,Insurance Status,Seller Type,Resale Price (INR),City Tier
+New Hampshire,29.85,Honda,FZ V3,71265,2015,764,Hybrid,74.44,First,2020,Not Available,Individual,184108.98,North Matthewside
+Ohio,28.45,TVS,RC 390,292688,2018,918,Hybrid,36.71,Second,2021,Expired,Individual,192570.58,Mariachester
+South Dakota,34.64,TVS,Platina 110,285097,2017,810,Petrol,80.56,Second,2019,Not Available,Individual,193058.9,New Debrabury
+West Virginia,16.67,Kawasaki,Interceptor 650,236989,2015,954,Hybrid,88.39,Third,2023,Expired,Individual,123624.99,Jacobville
+Missouri,34.7,Kawasaki,Interceptor 650,74218,2021,365,Hybrid,75.2,First,2016,Active,Individual,256994.89,Martinville
+Kentucky,73.23,Royal Enfield,Shine,61776,2018,539,Hybrid,89.1,Third,2024,Not Available,Individual,50743.77,Wilsonberg
+Oklahoma,57.83,Kawasaki,Unicorn,283759,2022,361,Hybrid,96.54,First,2022,Expired,Individual,29029.38,North Caleb
+Vermont,12.87,KTM,Fascino 125,275807,2022,615,Hybrid,47.05,Third,2023,Not Available,Individual,131963.3,North Debbie
+Colorado,5.99,Hero,Pulsar 150,182180,2023,696,Hybrid,86.83,Third,2021,Active,Dealer,44654.21,Amyville
+Iowa,18.0,Honda,CBR 650R,206008,2016,279,Hybrid,47.46,Third,2022,Active,Dealer,37497.82,East Russell
+Georgia,38.69,Yamaha,Sport,51282,2018,580,Hybrid,85.8,First,2022,Expired,Dealer,44879.47,Lorifort
+Louisiana,61.0,Yamaha,Jupiter,79375,2015,144,Hybrid,82.25,Second,2023,Not Available,Individual,115267.73,Angelamouth
+Arkansas,76.43,Royal Enfield,FZ V3,250231,2018,134,Hybrid,54.87,Third,2019,Active,Dealer,33015.9,Port Mary
+Nevada,72.68,Royal Enfield,Z650,60289,2018,325,Hybrid,82.85,Third,2021,Active,Dealer,154244.84,East Brittanyfort
+Arkansas,26.72,Hero,Pulsar 150,74619,2023,919,Petrol,85.56,First,2023,Not Available,Individual,31887.82,South Christopherside
+Minnesota,32.74,Honda,Jupiter,243498,2023,833,Petrol,25.6,Third,2024,Active,Individual,66911.22,Rodriguezberg
+Rhode Island,69.51,Yamaha,Himalayan,321318,2017,964,Electric,68.07,First,2024,Not Available,Individual,41079.92,West Lisa
+Montana,32.84,TVS,Dominar 400,181597,2019,659,Hybrid,80.1,First,2023,Active,Individual,134192.61,Mooremouth
+Delaware,63.39,Yamaha,NTorq 125,119093,2015,196,Hybrid,60.27,First,2023,Not Available,Individual,106679.56,Lake Staceyport
+Arkansas,6.58,Hero,Xtreme 160R,136468,2023,579,Hybrid,91.19,Third,2015,Not Available,Individual,189103.78,South Jenny
+Michigan,74.83,Bajaj,250 Duke,61883,2021,641,Hybrid,89.44,Third,2022,Not Available,Dealer,153372.71,Port Todd
+West Virginia,59.06,Royal Enfield,390 Adventure,89034,2022,334,Hybrid,83.88,Third,2023,Expired,Individual,50789.83,Melissaberg
+South Dakota,26.49,TVS,FZ V3,258184,2018,200,Electric,83.23,Third,2015,Not Available,Dealer,195713.7,Stephaniechester
+Vermont,8.44,Yamaha,Fascino 125,51681,2022,172,Electric,75.06,First,2024,Expired,Individual,20769.02,Dominguezmouth
+Alabama,66.61,Kawasaki,CBR 650R,152702,2015,961,Hybrid,78.54,Second,2023,Active,Dealer,164843.14,North Steven
+Oklahoma,25.15,Royal Enfield,Versys 650,77701,2018,745,Hybrid,86.05,Second,2024,Not Available,Individual,36552.59,Davidberg
+Utah,54.54,TVS,RC 390,166561,2017,827,Hybrid,85.25,Third,2023,Active,Individual,163013.6,Harrisonburgh
+Kentucky,8.34,KTM,FZ V3,215686,2015,550,Petrol,85.01,First,2020,Expired,Dealer,72156.54,Mirandaberg
+Louisiana,37.36,KTM,Jupiter,130611,2020,627,Petrol,86.82,Second,2016,Not Available,Individual,110726.38,New Jennifer
+Minnesota,19.67,Kawasaki,Ninja 300,135941,2018,608,Electric,72.73,Third,2020,Not Available,Dealer,151765.43,Lopezfort
+Colorado,67.32,Hero,Activa,120301,2017,1000,Petrol,36.41,Third,2019,Active,Individual,188310.55,New Alexaport
+Georgia,42.09,TVS,Jupiter,132825,2016,847,Hybrid,89.11,Third,2023,Active,Individual,164113.59,Carneyfurt
+Minnesota,15.47,TVS,Splendor Plus,218525,2015,699,Hybrid,51.81,First,2024,Active,Dealer,138048.75,Michaeltown
+Georgia,41.39,Hero,Hunter 350,233157,2016,360,Hybrid,97.87,First,2022,Not Available,Dealer,111502.26,Rayfurt
+Nevada,11.08,KTM,MT-15,156801,2015,661,Hybrid,65.78,Second,2024,Expired,Individual,194914.41,Marissaburgh
+Kentucky,12.58,Yamaha,RC 390,265344,2024,402,Hybrid,88.58,Second,2023,Not Available,Individual,190790.82,Powellstad
+Kansas,11.54,Kawasaki,CT 100,78430,2020,827,Petrol,33.37,Third,2021,Not Available,Individual,35422.1,South Samanthatown
+Nevada,12.41,TVS,Xtreme 160R,182973,2019,481,Electric,88.51,First,2024,Active,Individual,211017.84,Jennifermouth
+Missouri,39.24,KTM,HF Deluxe,178283,2022,659,Petrol,43.54,Third,2019,Not Available,Individual,170935.47,Port Alexander
+Texas,9.55,Hero,FZ V3,163635,2015,935,Hybrid,77.47,Third,2023,Not Available,Individual,170435.61,South Jennifer
+Nebraska,17.74,KTM,Dio,152252,2023,161,Hybrid,79.43,First,2023,Not Available,Individual,173966.38,Rileyshire
+Illinois,18.48,Kawasaki,Ronin,50393,2020,981,Hybrid,96.06,Third,2021,Active,Individual,31704.69,West Bonnie
+Missouri,34.04,TVS,Pulsar 150,62299,2015,296,Hybrid,92.52,First,2023,Active,Individual,126882.05,Heidimouth
+Kentucky,41.69,KTM,Shine,183763,2016,790,Hybrid,83.62,Third,2024,Active,Dealer,30367.34,West Tammy
+New Hampshire,57.13,KTM,NTorq 125,267331,2016,547,Electric,64.56,Third,2023,Not Available,Individual,188985.37,Lake Alexis
+Florida,6.12,Kawasaki,Xtreme 160R,57025,2017,898,Hybrid,90.66,Second,2022,Expired,Dealer,169617.59,East Barbarafurt
+Virginia,45.07,Hero,Dio,145311,2022,308,Petrol,82.41,Third,2020,Not Available,Individual,164461.93,East Christineberg
+Rhode Island,25.69,Yamaha,FZ V3,75927,2016,901,Petrol,85.18,First,2019,Expired,Individual,152699.4,North Hollyshire
+Missouri,63.98,Kawasaki,Splendor Plus,249564,2022,688,Petrol,37.01,Third,2022,Active,Individual,122999.41,East Randallmouth
+New Jersey,8.44,KTM,Glamour,62530,2015,634,Hybrid,84.87,Second,2023,Not Available,Individual,156288.87,West Jason
+Kentucky,7.88,Kawasaki,250 Duke,346887,2020,507,Petrol,88.02,Third,2024,Not Available,Individual,49673.46,Olsonberg
+Vermont,19.64,Yamaha,Pulsar 150,74205,2018,515,Hybrid,46.34,First,2024,Expired,Individual,180158.16,West Virginia
+Idaho,57.31,KTM,Versys 650,149774,2015,861,Hybrid,82.33,First,2017,Active,Dealer,246207.09,Terrimouth
+Texas,11.65,TVS,FZ V3,95092,2019,796,Electric,66.1,Third,2024,Active,Individual,98471.92,West Feliciastad
+Oklahoma,11.14,Kawasaki,Ray ZR,142063,2016,606,Petrol,33.73,Third,2024,Expired,Individual,36637.81,Milestown
+Indiana,63.76,Bajaj,Jupiter,364859,2015,296,Hybrid,46.79,First,2021,Active,Dealer,218393.12,Lake Mary
+Oklahoma,63.26,KTM,Himalayan,78571,2015,265,Petrol,68.54,First,2020,Active,Individual,91977.39,East Samuel
+California,26.91,KTM,Glamour,169550,2015,491,Petrol,99.68,Third,2021,Expired,Individual,31691.3,Diazmouth
+Alabama,7.92,TVS,Ninja 400,101880,2020,343,Hybrid,84.45,First,2023,Expired,Dealer,122409.86,North Rachelmouth
+Kentucky,54.06,TVS,NTorq 125,301484,2019,674,Electric,77.4,First,2015,Expired,Individual,131928.13,Lake Amanda

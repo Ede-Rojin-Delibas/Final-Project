@@ -71,9 +71,6 @@ function generateModelData() {
             // Sonuçları göster
             document.getElementById('results').classList.remove('hidden');
             
-            // Kalite metriklerini güncelle
-            updateQualityMetrics(data.metrics);
-            
             // Önizleme tablosunu oluştur
             createPreviewTable(data.preview);
             
@@ -109,21 +106,6 @@ function generateModelData() {
         generateButton.innerHTML = originalButtonHtml;
         generateButton.disabled = false;
     });
-}
-
-// Kalite metriklerini güncelle
-function updateQualityMetrics(metrics) {
-    if (!metrics) return;
-    
-    const formatScore = (score) => {
-        if (score === null || score === undefined || isNaN(score)) return 'Veri yok';
-        return (score * 100).toFixed(1) + '%';
-    };
-
-    document.getElementById('statisticalScore').textContent = formatScore(metrics.statistical_similarity || metrics.CSTest || metrics['CSTest'] || null);
-    document.getElementById('columnShapeScore').textContent = formatScore(metrics.column_shape || metrics.TVComplement || metrics['TVComplement'] || null);
-    document.getElementById('correlationScore').textContent = formatScore(metrics.correlation || metrics.CorrelationSimilarity || metrics['CorrelationSimilarity'] || null);
-    document.getElementById('mlEfficacyScore').textContent = formatScore(metrics.ml_efficacy || metrics.LogisticDetection || metrics['LogisticDetection'] || null);
 }
 
 // Önizleme tablosunu oluştur
@@ -174,9 +156,11 @@ function createPreviewTable(data) {
 // İndirme butonu ayarları
 function getCheckedPIIColumns() {
     const checkboxes = document.querySelectorAll('#piiColumnsBox input[type="checkbox"][name="exclude_pii_cols"]');
-    const checked = [];
-    checkboxes.forEach(cb => { if (cb.checked) checked.push(cb.value); });
-    return checked;
+    const checked = new Set(); // Tekrarları önlemek için Set kullan
+    checkboxes.forEach(cb => { 
+        if (cb.checked) checked.add(cb.value); 
+    });
+    return Array.from(checked); // Set'i array'e çevir
 }
 
 function setupDownloadButton(downloadUrl) {
@@ -190,26 +174,59 @@ function setupDownloadButton(downloadUrl) {
         const originalButtonHtml = this.innerHTML;
         this.innerHTML = 'İndiriliyor...';
         this.disabled = true;
+        
         fetch('/model_download', {
             method: 'POST',
             body: formData
         })
         .then(response => {
-            if (!response.ok) throw new Error('İndirme başarısız. Sunucu yanıtı alınamadı.');
-            return response.blob();
-        })
-        .then(blob => {
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'synthetic_data.csv';
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            window.URL.revokeObjectURL(url);
-            showToast('Dosya başarıyla indirildi!', 'success');
+            if (!response.ok) {
+                // JSON hata mesajını almaya çalış
+                return response.json().then(errorData => {
+                    throw new Error(errorData.error || 'İndirme başarısız. Sunucu yanıtı alınamadı.');
+                }).catch(() => {
+                    throw new Error('İndirme başarısız. Sunucu yanıtı alınamadı.');
+                });
+            }
+            
+            // Content-Type kontrolü
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                // JSON yanıt geldi, hata olabilir
+                return response.json().then(data => {
+                    if (!data.success) {
+                        throw new Error(data.error || 'İndirme başarısız.');
+                    }
+                    throw new Error('Beklenmeyen JSON yanıtı.');
+                });
+            }
+            
+            // Dosya adını al
+            const contentDisposition = response.headers.get('content-disposition');
+            let filename = 'synthetic_data.csv';
+            if (contentDisposition) {
+                const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                if (filenameMatch && filenameMatch[1]) {
+                    filename = filenameMatch[1].replace(/['"]/g, '');
+                }
+            }
+            
+            // Dosya indirme işlemi
+            return response.blob().then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                showToast('Dosya başarıyla indirildi!', 'success');
+            });
         })
         .catch(error => {
+            console.error('İndirme hatası:', error);
             showToast('Dosya indirilemedi: ' + error.message, 'error');
         })
         .finally(() => {
@@ -231,16 +248,26 @@ function setupShareButton() {
         const originalButtonHtml = this.innerHTML;
         this.innerHTML = 'Paylaşım Linki Oluşturuluyor...';
         this.disabled = true;
+        
         fetch('/model_share', {
             method: 'POST',
             body: formData
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(errorData => {
+                    throw new Error(errorData.error || 'Paylaşım başarısız. Sunucu yanıtı alınamadı.');
+                }).catch(() => {
+                    throw new Error('Paylaşım başarısız. Sunucu yanıtı alınamadı.');
+                });
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 const shareLinkBox = document.getElementById('shareLinkBox');
                 shareLinkBox.classList.remove('hidden');
-                const url = data.url || data.share_url;
+                const url = data.share_url || data.url;
                 shareLinkBox.innerHTML = `
                     <div class="flex items-center gap-2 w-full">
                         <input type="text" readonly value="${url}" 
@@ -257,6 +284,7 @@ function setupShareButton() {
             }
         })
         .catch(error => {
+            console.error('Paylaşım hatası:', error);
             showToast('Paylaşım linki oluşturulamadı: ' + error.message, 'error');
         })
         .finally(() => {

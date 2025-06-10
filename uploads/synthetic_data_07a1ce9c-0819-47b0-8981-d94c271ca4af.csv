@@ -1,0 +1,21 @@
+Sale_Date,Sales_Rep,Region,Sales_Amount,Quantity_Sold,Product_Category,Unit_Cost,Unit_Price,Customer_Type,Discount,Payment_Method,Sales_Channel,Region_and_Sales_Rep
+2023-01-10,Eve,North,9968.42,1,Clothing,4699.89,2731.5026369900725,Returning,0.26,Credit Card,Online,North-Charlie
+2023-01-02,Charlie,South,152.8,12,Electronics,4988.18,5415.595269394125,New,0.28,Credit Card,Online,South-Eve
+2023-04-18,Alice,West,9941.13,8,Food,4995.3,177.0583837746188,New,0.21,Cash,Retail,South-David
+2023-12-31,David,West,8436.34,1,Clothing,1377.37,645.3129645821316,New,0.3,Credit Card,Retail,West-David
+2023-01-01,Eve,North,9962.29,32,Food,4995.3,4176.159666260779,New,0.19,Cash,Online,East-Bob
+2023-05-15,Charlie,South,9934.58,7,Clothing,2372.31,4726.105366112194,New,0.3,Credit Card,Online,South-David
+2023-01-01,Eve,North,2450.82,14,Clothing,4984.11,5285.100682423447,Returning,0.11,Credit Card,Retail,South-Bob
+2023-01-11,Bob,West,8500.36,48,Food,4995.21,4527.936595403454,New,0.3,Bank Transfer,Retail,North-Eve
+2023-12-31,Bob,North,9957.23,41,Food,4969.93,313.12358376991995,Returning,0.24,Cash,Retail,East-David
+2023-07-21,Eve,South,4702.23,2,Food,4992.81,5413.940345664328,Returning,0.29,Cash,Online,East-Bob
+2023-01-01,David,North,116.81,1,Furniture,4995.3,5442.15,Returning,0.3,Credit Card,Retail,North-Bob
+2023-12-25,Bob,South,487.35,11,Food,600.32,842.356721231763,New,0.3,Credit Card,Online,East-Charlie
+2023-04-29,Bob,South,9984.23,1,Food,4993.65,687.7261245886757,New,0.3,Credit Card,Retail,East-David
+2023-12-31,Bob,North,9809.54,48,Food,632.68,179.13108532300143,New,0.27,Cash,Online,West-Charlie
+2023-12-31,Bob,South,9804.41,48,Food,4995.3,214.60271339990072,New,0.3,Credit Card,Retail,West-Charlie
+2023-12-18,Alice,East,9914.03,49,Food,4995.3,4768.728531789178,Returning,0.3,Cash,Retail,North-David
+2023-12-31,Eve,North,9804.94,49,Clothing,4986.76,896.0786052874371,New,0.2,Credit Card,Online,East-Bob
+2023-01-05,Eve,South,5277.45,38,Food,4952.91,5371.006067606028,New,0.12,Bank Transfer,Online,West-Charlie
+2023-01-02,Charlie,North,9686.54,1,Furniture,677.06,3465.777141068382,New,0.29,Bank Transfer,Online,North-Charlie
+2023-10-30,Charlie,North,9780.29,11,Food,4807.19,5373.806068526179,Returning,0.05,Credit Card,Retail,West-Eve

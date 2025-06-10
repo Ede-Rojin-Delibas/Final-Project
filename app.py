@@ -87,8 +87,7 @@ city_district_postcodes = {
     "Ankara": {"Çankaya": "06680", "Keçiören": "06280", "Mamak": "06470", "Yenimahalle": "06170"},
     "İzmir": {"Konak": "35250", "Karşıyaka": "35550", "Bornova": "35040", "Buca": "35390"},
     "Bursa": {"Nilüfer": "16110", "Osmangazi": "16010", "Yıldırım": "16300"},
-    "Antalya": {"Muratpaşa": "07010", "Konyaaltı": "07070", "Kepez": "07060"},
-    "Adana": {"Sarıçam": "01240", "Çukurova": "01170", "Seyhan": "01010", "Yüreğir": "01316"}
+    "Antalya": {"Muratpaşa": "07010", "Konyaaltı": "07070", "Kepez": "07060", "Seyhan": "01010", "Yüreğir": "01316"}
 }
 
 @app.route('/get_all_data_types')
@@ -1609,7 +1608,7 @@ def get_data_types(category):
             'error': str(e)
         }), 400
         # Veri türlerinin geçerliliğini kontrol et
-     
+
 #kullanıcı aktiviteleri modeli
 class UserActivity(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -2006,9 +2005,19 @@ def model_preview():
             pii_cols = detect_pii_columns(df)
             # Eğer exclude_pii_cols gelmişse sadece işaretli olmayanları bırak
             if exclude_pii_cols:
-                df = df.drop(columns=exclude_pii_cols)
+                # Tekrarlanan sütunları temizle
+                exclude_pii_cols = list(set(exclude_pii_cols))
+                # Mevcut sütunları kontrol et
+                existing_cols = [col for col in exclude_pii_cols if col in df.columns]
+                if existing_cols:
+                    df = df.drop(columns=existing_cols)
+                app.logger.info(f"Preview: PII sütunları çıkarıldı: {existing_cols}")
             elif exclude_pii and pii_cols:
-                df = df.drop(columns=pii_cols)
+                # Mevcut PII sütunlarını kontrol et
+                existing_pii_cols = [col for col in pii_cols if col in df.columns]
+                if existing_pii_cols:
+                    df = df.drop(columns=existing_pii_cols)
+                app.logger.info(f"Preview: Otomatik PII sütunları çıkarıldı: {existing_pii_cols}")
             metadata = SingleTableMetadata()
             metadata.detect_from_dataframe(df)
             model_params = {
@@ -2027,11 +2036,12 @@ def model_preview():
             turkish_columns = {col: get_label_by_id(col) for col in synthetic_data.columns}
             synthetic_data.rename(columns=turkish_columns, inplace=True)
             metrics = calculate_quality_metrics(df, synthetic_data)
+            metrics_results = {k: str(v) for k, v in metrics.items()}
             preview = synthetic_data.head().to_dict('records')
             return jsonify({
                 'success': True,
                 'preview': preview,
-                'metrics': metrics,
+                'metrics': metrics_results,
                 'pii_columns': pii_cols
             })
         else:
@@ -2064,53 +2074,263 @@ def train_model(df, metadata, model_type='ctgan', **kwargs):
         raise ValueError(f"Model eğitimi sırasında hata oluştu: {str(e)}\n{traceback.format_exc()}")
 
 def calculate_quality_metrics(real_data, synthetic_data, target_col=None):
-    scores = {}
+    metrics_results = {}
+    
+    # 1. Sütun isimlerini ve sıralarını eşitle
+    common_columns = [col for col in real_data.columns if col in synthetic_data.columns]
+    real_data = real_data[common_columns].copy()
+    synthetic_data = synthetic_data[common_columns].copy()
+
+    # 2. ID veya çok benzersiz sütunları hariç tut
+    id_like_cols = [col for col in real_data.columns if 'id' in col.lower() or real_data[col].nunique() > 0.9 * len(real_data)]
+    real_data = real_data.drop(columns=id_like_cols, errors='ignore')
+    synthetic_data = synthetic_data.drop(columns=id_like_cols, errors='ignore')
+
+    # 3. Kategorik sütunlar (az kategoriye sahip olanlar)
+    categorical_cols_for_metrics = [
+        col for col in real_data.columns
+        if (
+            (pd.api.types.is_object_dtype(real_data[col]) or isinstance(real_data[col].dtype, pd.CategoricalDtype))
+            and 1 < real_data[col].nunique(dropna=True) <= 10
+            and 1 < synthetic_data[col].nunique(dropna=True) <= 10
+        )
+    ]
+    for col in categorical_cols_for_metrics:
+        real_cats = pd.Series(real_data[col].dropna().unique())
+        synth_cats = pd.Series(synthetic_data[col].dropna().unique())
+        all_cats = pd.Series(pd.concat([real_cats, synth_cats])).unique()
+        cat_type = pd.CategoricalDtype(categories=all_cats)
+        real_data[col] = real_data[col].astype(cat_type)
+        synthetic_data[col] = synthetic_data[col].astype(cat_type)
+
+    # 4. Sayısal sütunları float/int yap (kategorik ve tarih hariç)
+    for col in real_data.columns:
+        if col not in categorical_cols_for_metrics and not col.lower().endswith('date'):
+            real_data[col] = pd.to_numeric(real_data[col], errors='coerce')
+            synthetic_data[col] = pd.to_numeric(synthetic_data[col], errors='coerce')
+
+    # 5. Tarih sütununu metriklerden çıkar (ör: SALE_DATE)
+    for col in list(real_data.columns):
+        if col.lower().endswith('date'):
+            real_data = real_data.drop(columns=[col])
+            synthetic_data = synthetic_data.drop(columns=[col])
+
+    # 6. Sadece en az 2 farklı değeri olan sütunları bırak
+    real_data = real_data[[col for col in real_data.columns if real_data[col].nunique(dropna=True) > 1]]
+    synthetic_data = synthetic_data[[col for col in synthetic_data.columns if synthetic_data[col].nunique(dropna=True) > 1]]
+
+    # 7. Sayısal sütunlardan hedef seçerken ID ve çok benzersiz olanları hariç tut
+    numeric_cols = [
+        col for col in real_data.columns
+        if pd.api.types.is_numeric_dtype(real_data[col]) and real_data[col].nunique() < 0.8 * len(real_data)
+    ]
+
+    app.logger.debug(f"calculate_quality_metrics - Başlangıç gerçek veri kolonları: {real_data.columns.tolist()}")
+    app.logger.debug(f"calculate_quality_metrics - Başlangıç sentetik veri kolonları: {synthetic_data.columns.tolist()}")
+    app.logger.debug(f"calculate_quality_metrics - Başlangıç gerçek veri dtypes:\n{real_data.dtypes}")
+
+    # Tarih benzeri object kolonlarını tespit et ve metrik hesaplamadan çıkar
+    cols_to_drop_dates = []
+    for col in real_data.columns:
+        if pd.api.types.is_object_dtype(real_data[col]):
+            try:
+                pd.to_datetime(real_data[col], errors='raise')
+                cols_to_drop_dates.append(col)
+                app.logger.debug(f"Sütun '{col}': Tarih kolonu olarak algılandı, metrik hesaplamadan çıkarılacak.")
+            except (ValueError, TypeError):
+                pass
+
+    # Tespit edilen tarih kolonlarını düşür
+    if cols_to_drop_dates:
+        real_data = real_data.drop(columns=cols_to_drop_dates, errors='ignore')
+        synthetic_data = synthetic_data.drop(columns=cols_to_drop_dates, errors='ignore')
+        app.logger.debug(f"Tarih kolonları çıkarıldı: {cols_to_drop_dates}")
+
+    # Geriye kalan object kolonlarını sayısal dönüştürme veya kategorik işlem için analiz et
+    for col in real_data.columns:
+        if pd.api.types.is_object_dtype(real_data[col]):
+            # Sayısala dönüştürmeyi dene. Dönüşemeyenler NaN olur.
+            numeric_series_real = pd.to_numeric(real_data[col], errors='coerce')
+            numeric_series_synthetic = pd.to_numeric(synthetic_data[col], errors='coerce')
+
+            real_non_nan_ratio = numeric_series_real.count() / len(numeric_series_real) if len(numeric_series_real) > 0 else 0
+            synth_non_nan_ratio = numeric_series_synthetic.count() / len(numeric_series_synthetic) if len(numeric_series_synthetic) > 0 else 0
+
+            if real_non_nan_ratio > 0.2 and synth_non_nan_ratio > 0.2:
+                real_data[col] = numeric_series_real
+                synthetic_data[col] = numeric_series_synthetic
+                app.logger.debug(f"Sütun '{col}': Sayısala dönüştürüldü (NaN oranı kabul edilebilir).")
+            else:
+                app.logger.debug(f"Sütun '{col}': Sayısala dönüştürülemedi (çok fazla NaN veya boş), kategorik olarak ele alınacak.")
+                # Bilinmeyen kategorileri NaN ile değiştir
+                real_categories = real_data[col].dropna().unique()
+                synthetic_data[col] = synthetic_data[col].apply(
+                    lambda x: x if x in real_categories else np.nan
+                )
+    app.logger.debug(f"Temizlenmiş gerçek veri kolonları (son): {real_data.columns.tolist()}")
+    app.logger.debug(f"Temizlenmiş sentetik veri kolonları (son): {synthetic_data.columns.tolist()}")
+    app.logger.debug(f"Temizlenmiş gerçek veri dtypes (son):\n{real_data.dtypes}")
+
+    # ML Efficacy (MLPRegressor)
+    try:
+        suitable_target_col = None
+        if target_col and target_col in real_data.columns and pd.api.types.is_numeric_dtype(real_data[target_col]):
+            suitable_target_col = target_col
+        else:
+            numeric_cols = [col for col in real_data.columns if pd.api.types.is_numeric_dtype(real_data[col])]
+            if numeric_cols:
+                suitable_target_col = numeric_cols[0]
+                app.logger.info(f"ML Etkinliği için otomatik olarak hedef sütun seçildi: {suitable_target_col}")
+
+        if suitable_target_col:
+            temp_real_target = real_data[suitable_target_col].dropna()
+            temp_synth_target = synthetic_data[suitable_target_col].dropna()
+
+            if temp_real_target.empty or temp_synth_target.empty or len(temp_real_target.unique()) < 2:
+                 metrics_results['ML Etkinliği (MLPRegressor)'] = "Hedef sütunda yeterli veri veya çeşitlilik yok."
+            else:
+                metric_result = MLPRegressor.compute(real_data, synthetic_data, target=suitable_target_col)
+                metrics_results['ML Etkinliği (MLPRegressor)'] = round(metric_result * 100, 1)
+        else:
+            metrics_results['ML Etkinliği (MLPRegressor)'] = "Hedef sütun sayısal değil veya bulunamadı."
+    except Exception as e:
+        metrics_results['ML Etkinliği (MLPRegressor)'] = "Hesaplanamadı"
+        app.logger.error(f"ML Efficacy hesaplama hatası: {traceback.format_exc()}")
+
+    # İstatistiksel Benzerlik (CSTest)
+    cs_test_score = 0
+    cs_test_count = 0
+    for col in categorical_cols_for_metrics:
+        if (pd.api.types.is_object_dtype(real_data[col]) or
+            isinstance(real_data[col].dtype, pd.CategoricalDtype) or
+            pd.api.types.is_numeric_dtype(real_data[col])):
+
+            if ((pd.api.types.is_object_dtype(real_data[col]) or isinstance(real_data[col].dtype, pd.CategoricalDtype)) and
+               (real_data[col].nunique() < 2 or synthetic_data[col].nunique() < 2)):
+                continue
+
+            try:
+                # DataFrame olarak hazırla
+                real_df = pd.DataFrame({col: real_data[col].dropna()})
+                synthetic_df = pd.DataFrame({col: synthetic_data[col].dropna()})
+
+                if real_df.empty or synthetic_df.empty:
+                    continue
+
+                metric_result = CSTest.compute(real_df, synthetic_df)
+                cs_test_score += metric_result
+                cs_test_count += 1
+            except Exception as e:
+                app.logger.warning(f"CSTest hesaplama hatası ('{col}' sütunu): {traceback.format_exc()}")
+
+    if cs_test_count > 0:
+        metrics_results['İstatistiksel Benzerlik (CSTest)'] = f"{round((cs_test_score / cs_test_count) * 100, 1)}%"
+    else:
+        metrics_results['İstatistiksel Benzerlik (CSTest)'] = "Veri yok"
+
+    # Korelasyon Benzerliği (CorrelationSimilarity)
+    try:
+        numeric_cols_for_corr = [col for col in real_data.columns if pd.api.types.is_numeric_dtype(real_data[col])]
+        
+        if len(numeric_cols_for_corr) >= 2:
+            real_data_for_corr = real_data[numeric_cols_for_corr].dropna()
+            synthetic_data_for_corr = synthetic_data[numeric_cols_for_corr].dropna()
+
+            if not real_data_for_corr.empty and not synthetic_data_for_corr.empty:
+                metric_result = CorrelationSimilarity.compute(real_data_for_corr, synthetic_data_for_corr)
+                metrics_results['Korelasyon Benzerliği (CorrelationSimilarity)'] = round(metric_result * 100, 1)
+            else:
+                metrics_results['Korelasyon Benzerliği (CorrelationSimilarity)'] = "Hesaplanamadı (temizlenmiş veri boş)"
+        else:
+            metrics_results['Korelasyon Benzerliği (CorrelationSimilarity)'] = "Hesaplanamadı (yeterli sayısal sütun yok)"
+    except Exception as e:
+        metrics_results['Korelasyon Benzerliği (CorrelationSimilarity)'] = "Hesaplanamadı"
+        app.logger.error(f"Korelasyon Benzerliği hesaplama hatası: {traceback.format_exc()}")
+    
+    # Kategori Kapsamı (TVComplement)
+    tv_complement_score = 0
+    tv_complement_count = 0
+    for col in categorical_cols_for_metrics:
+        if pd.api.types.is_object_dtype(real_data[col]) or isinstance(real_data[col].dtype, pd.CategoricalDtype):
+            if real_data[col].nunique() < 2 or synthetic_data[col].nunique() < 2:
+                continue
+
+            try:
+                # DataFrame olarak hazırla
+                real_df = pd.DataFrame({col: real_data[col].dropna()})
+                synthetic_df = pd.DataFrame({col: synthetic_data[col].dropna()})
+                
+                if real_df.empty or synthetic_df.empty:
+                    continue
+
+                metric_result = TVComplement.compute(real_df, synthetic_df)
+                tv_complement_score += metric_result
+                tv_complement_count += 1
+            except Exception as e:
+                app.logger.warning(f"TVComplement hesaplama hatası ('{col}' sütunu): {traceback.format_exc()}")
+
+    if tv_complement_count > 0:
+        metrics_results['Kategori Kapsamı (TVComplement)'] = f"{round((tv_complement_score / tv_complement_count) * 100, 1)}%"
+    else:
+        metrics_results['Kategori Kapsamı (TVComplement)'] = "Veri yok"
+    
+    # Sınır Uyumu (BoundaryAdherence)
+    boundary_adherence_score = 0
+    boundary_adherence_count = 0
     for col in real_data.columns:
         if pd.api.types.is_numeric_dtype(real_data[col]):
             try:
-                val1 = CSTest.compute(real_data, synthetic_data, column_name=col)
-                val2 = BoundaryAdherence.compute(real_data, synthetic_data, column_name=col)
-                scores[f'CSTest_{col}'] = float(val1) if val1 is not None and not pd.isna(val1) else None
-                scores[f'BoundaryAdherence_{col}'] = float(val2) if val2 is not None and not pd.isna(val2) else None
-                app.logger.info(f"CSTest_{col}: {val1}, BoundaryAdherence_{col}: {val2}")
+                # DataFrame olarak hazırla
+                real_df = pd.DataFrame({col: real_data[col].dropna()})
+                synthetic_df = pd.DataFrame({col: synthetic_data[col].dropna()})
+
+                if real_df.empty or synthetic_df.empty:
+                    continue
+
+                metric_result = BoundaryAdherence.compute(real_df, synthetic_df)
+                boundary_adherence_score += metric_result
+                boundary_adherence_count += 1
             except Exception as e:
-                scores[f'CSTest_{col}'] = None
-                scores[f'BoundaryAdherence_{col}'] = None
-                app.logger.error(f"CSTest/BoundaryAdherence hata ({col}): {str(e)}")
+                app.logger.warning(f"BoundaryAdherence hesaplama hatası ('{col}' sütunu): {traceback.format_exc()}")
+    
+    if boundary_adherence_count > 0:
+        metrics_results['Sınır Uyumu (BoundaryAdherence)'] = f"{round((boundary_adherence_score / boundary_adherence_count) * 100, 1)}%"
+    else:
+        metrics_results['Sınır Uyumu (BoundaryAdherence)'] = "Veri yok"
+
+    # Detection Metrics
+    try:
+        logistic_detection_score = LogisticDetection.compute(real_data, synthetic_data)
+        metrics_results['Logistic Detection'] = f"{round(logistic_detection_score * 100, 1)}%"
+    except Exception as e:
+        metrics_results['Logistic Detection'] = "Hesaplanamadı"
+        app.logger.error(f"Logistic Detection hesaplama hatası: {traceback.format_exc()}")
+    
+    try:
+        svc_detection_score = SVCDetection.compute(real_data, synthetic_data)
+        metrics_results['SVC Detection'] = f"{round(svc_detection_score * 100, 1)}%"
+    except Exception as e:
+        metrics_results['SVC Detection'] = "Hesaplanamadı"
+        app.logger.error(f"SVC Detection hesaplama hatası: {traceback.format_exc()}")
+
+    print("MLPRegressor sonucu:", metrics_results.get('ML Etkinliği (MLPRegressor)'))
+    print("CSTest sonucu:", metrics_results.get('İstatistiksel Benzerlik (CSTest)'))
+    print("CorrelationSimilarity sonucu:", metrics_results.get('Korelasyon Benzerliği (CorrelationSimilarity)'))
+    print("TVComplement sonucu:", metrics_results.get('Kategori Kapsamı (TVComplement)'))
+
+    # NaN değerlerini güvenli hale getir
+    safe_metrics = {}
+    for k, v in metrics_results.items():
+        if pd.isna(v) or v is None:
+            safe_metrics[k] = "Hesaplanamadı"
+        elif isinstance(v, (int, float)) and (v != v or v == float('inf') or v == float('-inf')):
+            # NaN, inf, -inf kontrolü
+            safe_metrics[k] = "Hesaplanamadı"
         else:
-            try:
-                val3 = TVComplement.compute(real_data, synthetic_data, column_name=col)
-                scores[f'TVComplement_{col}'] = float(val3) if val3 is not None and not pd.isna(val3) else None
-                app.logger.info(f"TVComplement_{col}: {val3}")
-            except Exception as e:
-                scores[f'TVComplement_{col}'] = None
-                app.logger.error(f"TVComplement hata ({col}): {str(e)}")
-    try:
-        val4 = CorrelationSimilarity.compute(real_data, synthetic_data)
-        scores['CorrelationSimilarity'] = float(val4) if val4 is not None and not pd.isna(val4) else None
-        app.logger.info(f"CorrelationSimilarity: {val4}")
-    except Exception as e:
-        scores['CorrelationSimilarity'] = None
-        app.logger.error(f"CorrelationSimilarity hata: {str(e)}")
-    try:
-        val5 = LogisticDetection.compute(real_data, synthetic_data)
-        val6 = SVCDetection.compute(real_data, synthetic_data)
-        scores['LogisticDetection'] = float(val5) if val5 is not None and not pd.isna(val5) else None
-        scores['SVCDetection'] = float(val6) if val6 is not None and not pd.isna(val6) else None
-        app.logger.info(f"LogisticDetection: {val5}, SVCDetection: {val6}")
-    except Exception as e:
-        scores['LogisticDetection'] = None
-        scores['SVCDetection'] = None
-        app.logger.error(f"Logistic/SVCDetection hata: {str(e)}")
-    if target_col and target_col in real_data.columns:
-        try:
-            val7 = BinaryMLPClassifier.compute(real_data, synthetic_data, target=target_col)
-            scores['BinaryMLPClassifier'] = float(val7) if val7 is not None and not pd.isna(val7) else None
-            app.logger.info(f"BinaryMLPClassifier: {val7}")
-        except Exception as e:
-            scores['BinaryMLPClassifier'] = None
-            app.logger.error(f"BinaryMLPClassifier hata: {str(e)}")
-    return scores
+            safe_metrics[k] = v
+    metrics_results = safe_metrics
+
+    return metrics_results
 
 @app.route('/model_download', methods=['POST'])
 @login_required
@@ -2122,10 +2342,15 @@ def model_download():
         return jsonify({'success': False, 'error': 'Dosya seçilmedi'}), 400
     if not allowed_file(file.filename):
         return jsonify({'success': False, 'error': 'Desteklenmeyen dosya formatı'}), 400
+    
+    temp_path = None
+    output_path = None
+    
     try:
         model_type = request.form.get('model_type', 'ctgan')
         if model_type not in ['ctgan', 'tvae', 'copulagan', 'gaussian', 'gaussiancopula']:
             return jsonify({'success': False, 'error': 'Geçersiz model tipi'}), 400
+        
         try:
             epochs = int(request.form.get('epochs', 300))
             batch_size = int(request.form.get('batch_size', 500))
@@ -2140,27 +2365,43 @@ def model_download():
                 generator_dims = [256, 256]
             learning_rate = float(request.form.get('learning_rate', 0.0002))
         except (ValueError, json.JSONDecodeError) as e:
-            return jsonify({'success': False, 'error': 'Geçersiz parametre değerleri'}), 400
+            return jsonify({'success': False, 'error': f'Geçersiz parametre değerleri: {str(e)}'}), 400
+        
         if not (1 <= epochs <= 1000):
             return jsonify({'success': False, 'error': 'Epochs 1-1000 arası olmalı'}), 400
         if not (1 <= batch_size <= 10000):
             return jsonify({'success': False, 'error': 'Batch size 1-10000 arası olmalı'}), 400
         if not (1 <= num_rows <= 1000000):
             return jsonify({'success': False, 'error': 'Satır sayısı 1-1.000.000 arası olmalı'}), 400
+        
+        # Geçici dosya oluştur
         filename = generate_unique_filename(file.filename)
         temp_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(temp_path)
+        
         try:
+            # Veriyi oku
             real_data = pd.read_csv(temp_path)
             real_data = turkce_sutun_adlari(real_data)
             real_data.columns = [str(col) for col in real_data.columns]
+            
             # PII checkbox'ları ile gelen sütunları çıkar
             exclude_pii_cols = request.form.getlist('exclude_pii_cols')
             if exclude_pii_cols:
-                real_data = real_data.drop(columns=exclude_pii_cols)
-            # Metadata hazırla ve PII sütunlarını işle
+                # Tekrarlanan sütunları temizle
+                exclude_pii_cols = list(set(exclude_pii_cols))
+                # Mevcut sütunları kontrol et
+                existing_cols = [col for col in exclude_pii_cols if col in real_data.columns]
+                if existing_cols:
+                    real_data = real_data.drop(columns=existing_cols)
+                app.logger.info(f"PII sütunları çıkarıldı: {existing_cols}")
+                app.logger.info(f"Kalan sütunlar: {list(real_data.columns)}")
+            
+            # Metadata hazırla
             meta_data = SingleTableMetadata()
             meta_data.detect_from_dataframe(real_data)
+            
+            # Model parametreleri
             model_params = {
                 'epochs': epochs,
                 'batch_size': batch_size,
@@ -2169,24 +2410,39 @@ def model_download():
                 'generator_lr': learning_rate,
                 'discriminator_lr': learning_rate
             }
+            if model_type == 'gaussiancopula':
+                model_params = {}
+            
+            # Model eğitimi
             model = train_model(real_data, meta_data, model_type=model_type, **model_params)
             synthetic_data = model.sample(num_rows=num_rows)
             synthetic_data.replace([np.nan, np.inf, -np.inf], None, inplace=True)
+            
+            # Sütun adlarını Türkçeleştir
             turkish_columns = {col: get_label_by_id(col) for col in synthetic_data.columns}
             synthetic_data.rename(columns=turkish_columns, inplace=True)
+            
+            # Kalite metrikleri (opsiyonel)
             metrics = None
             try:
                 metrics = calculate_quality_metrics(real_data, synthetic_data)
             except Exception as met_ex:
                 app.logger.error(f"Kalite metrikleri hesaplanamadı: {str(met_ex)}")
                 metrics = {'error': str(met_ex)}
+            
+            # Dosya formatı ve yolu
             file_format = request.form.get('format', 'csv')
-            output_filename = f"synthetic_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{file_format}"
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            output_filename = f"synthetic_data_{timestamp}.{file_format}"
             output_path = os.path.join(app.config['UPLOAD_FOLDER'], output_filename)
+            
+            # Dosyayı kaydet
             if file_format == 'csv':
-                synthetic_data.to_csv(output_path, index=False)
+                synthetic_data.to_csv(output_path, index=False, encoding='utf-8-sig')
             else:
                 synthetic_data.to_excel(output_path, index=False)
+            
+            # Veritabanına kayıt
             activity = UserActivity(
                 user_id=current_user.id,
                 action='model_data_generation',
@@ -2197,21 +2453,52 @@ def model_download():
             )
             db.session.add(activity)
             db.session.commit()
-            os.remove(temp_path)
-            return send_file(
-                output_path,
-                as_attachment=True,
-                download_name=output_filename,
-                mimetype='text/csv' if file_format == 'csv' else 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-            )
-        except Exception as e:
-            if os.path.exists(temp_path):
+            
+            # Geçici dosyayı sil
+            if temp_path and os.path.exists(temp_path):
                 os.remove(temp_path)
-            app.logger.error(f"Model download error: {str(e)}")
-            return jsonify({'success': False, 'error': f'İndirme sırasında hata: {str(e)}'}), 500
+            
+            # Dosyayı gönder - BytesIO kullanarak
+            try:
+                if file_format == 'csv':
+                    # CSV için BytesIO kullan
+                    output_buffer = io.BytesIO()
+                    synthetic_data.to_csv(output_buffer, index=False, encoding='utf-8-sig')
+                    output_buffer.seek(0)
+                    
+                    return send_file(
+                        output_buffer,
+                        as_attachment=True,
+                        download_name=output_filename,
+                        mimetype='text/csv'
+                    )
+                else:
+                    # Excel için dosyadan gönder
+                    return send_file(
+                        output_path,
+                        as_attachment=True,
+                        download_name=output_filename,
+                        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    )
+            except Exception as send_error:
+                app.logger.error(f"Dosya gönderme hatası: {str(send_error)}")
+                return jsonify({'success': False, 'error': f'Dosya gönderilemedi: {str(send_error)}'}), 500
+                
+        except Exception as e:
+            app.logger.error(f"Model işleme hatası: {str(e)}\n{traceback.format_exc()}")
+            return jsonify({'success': False, 'error': f'Model işleme hatası: {str(e)}'}), 500
+            
     except Exception as e:
-        app.logger.error(f"Model download error: {str(e)}")
-        return jsonify({'success': False, 'error': f'İndirme sırasında hata: {str(e)}'}), 500
+        app.logger.error(f"Model download genel hatası: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({'success': False, 'error': f'Genel hata: {str(e)}'}), 500
+    
+    finally:
+        # Temizlik
+        if temp_path and os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except:
+                pass
 
 @app.route('/download_file/<filename>')
 @login_required
@@ -2231,6 +2518,9 @@ def download_file(filename):
 @app.route('/model_share', methods=['POST'])
 @login_required
 def model_share():
+    temp_path = None
+    output_path = None
+    
     try:
         file = request.files['file']
         if file.filename == '':
@@ -2239,6 +2529,7 @@ def model_share():
         if not allowed_file(file.filename):
             app.logger.error('Paylaş: Desteklenmeyen dosya formatı')
             return jsonify({'success': False, 'error': 'Desteklenmeyen dosya formatı'}), 400
+        
         model_type = request.form.get('model_type', 'ctgan')
         epochs = int(request.form.get('epochs', 300))
         batch_size = int(request.form.get('batch_size', 500))
@@ -2254,20 +2545,39 @@ def model_share():
         learning_rate = float(request.form.get('learning_rate', 0.0002))
         exclude_pii_cols = request.form.getlist('exclude_pii_cols')
         exclude_pii = request.form.get('exclude_pii', 'false') == 'true'
+        
+        # Geçici dosya oluştur
         filename = generate_unique_filename(file.filename)
         temp_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(temp_path)
+        
         try:
+            # Veriyi oku
             real_data = pd.read_csv(temp_path)
             pii_cols = detect_pii_columns(real_data)
             if exclude_pii_cols:
-                real_data = real_data.drop(columns=exclude_pii_cols)
+                # Tekrarlanan sütunları temizle
+                exclude_pii_cols = list(set(exclude_pii_cols))
+                # Mevcut sütunları kontrol et
+                existing_cols = [col for col in exclude_pii_cols if col in real_data.columns]
+                if existing_cols:
+                    real_data = real_data.drop(columns=existing_cols)
+                app.logger.info(f"Paylaş: PII sütunları çıkarıldı: {existing_cols}")
             elif exclude_pii and pii_cols:
-                real_data = real_data.drop(columns=pii_cols)
+                # Mevcut PII sütunlarını kontrol et
+                existing_pii_cols = [col for col in pii_cols if col in real_data.columns]
+                if existing_pii_cols:
+                    real_data = real_data.drop(columns=existing_pii_cols)
+                app.logger.info(f"Paylaş: Otomatik PII sütunları çıkarıldı: {existing_pii_cols}")
+            
             real_data = turkce_sutun_adlari(real_data)
             real_data.columns = [str(col) for col in real_data.columns]
+            
+            # Metadata hazırla
             metadata = SingleTableMetadata()
             metadata.detect_from_dataframe(real_data)
+            
+            # Model parametreleri
             model_params = {
                 'epochs': epochs,
                 'batch_size': batch_size,
@@ -2278,11 +2588,17 @@ def model_share():
             }
             if model_type == 'gaussiancopula':
                 model_params = {}
+            
+            # Model eğitimi
             model = train_model(real_data, metadata, model_type=model_type, **model_params)
             synthetic_data = model.sample(num_rows=num_rows)
             synthetic_data.replace([np.nan, np.inf, -np.inf], None, inplace=True)
+            
+            # Sütun adlarını Türkçeleştir
             turkish_columns = {col: get_label_by_id(col) for col in synthetic_data.columns}
             synthetic_data.rename(columns=turkish_columns, inplace=True)
+            
+            # Kalite metrikleri
             metrics = None
             metrics_debug = None
             try:
@@ -2292,11 +2608,17 @@ def model_share():
                 app.logger.error(f"Paylaş: Kalite metrikleri hesaplanamadı: {str(met_ex)}\n{traceback.format_exc()}")
                 metrics = {'error': str(met_ex)}
                 metrics_debug = traceback.format_exc()
+            
+            # Paylaşım dosyası oluştur
             share_id = str(uuid.uuid4())
             file_format = request.form.get('format', 'csv')
             output_filename = f"synthetic_data_{share_id}.csv"
             output_path = os.path.join(app.config['UPLOAD_FOLDER'], output_filename)
-            synthetic_data.to_csv(output_path, index=False)
+            
+            # Dosyayı kaydet
+            synthetic_data.to_csv(output_path, index=False, encoding='utf-8-sig')
+            
+            # Veritabanına kayıt
             shared_data = SharedData(
                 user_id=current_user.id,
                 share_id=share_id,
@@ -2316,51 +2638,64 @@ def model_share():
             )
             db.session.add(shared_data)
             db.session.commit()
-            os.remove(temp_path)
+            
+            # Geçici dosyayı sil
+            if temp_path and os.path.exists(temp_path):
+                os.remove(temp_path)
+            
+            # URL'leri oluştur
             share_url = url_for('shared_model_data', share_id=share_id, _external=True)
+            download_url = url_for('download_shared_model_data', share_id=share_id)
+            
             return jsonify({
                 'success': True,
                 'message': 'Veri başarıyla paylaşıldı',
                 'share_url': share_url,
+                'download_url': download_url,
                 'metrics': metrics,
                 'metrics_debug': metrics_debug,
                 'preview': synthetic_data.head(5).to_dict('records'),
                 'pii_columns': pii_cols
             })
+            
         except Exception as e:
-            if os.path.exists(temp_path):
-                os.remove(temp_path)
-            app.logger.error(f"Paylaş: Hata: {str(e)}\n{traceback.format_exc()}")
-            return jsonify({'success': False, 'error': f'Paylaşım sırasında hata: {str(e)}'}), 500
+            app.logger.error(f"Paylaş: Model işleme hatası: {str(e)}\n{traceback.format_exc()}")
+            return jsonify({'success': False, 'error': f'Model işleme hatası: {str(e)}'}), 500
+            
     except Exception as e:
-        app.logger.error(f"Paylaş: Hata: {str(e)}\n{traceback.format_exc()}")
-        return jsonify({'success': False, 'error': f'Paylaşım sırasında hata: {str(e)}'}), 500
+        app.logger.error(f"Paylaş: Genel hata: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({'success': False, 'error': f'Genel hata: {str(e)}'}), 500
+    
+    finally:
+        # Temizlik
+        if temp_path and os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except:
+                pass
 
 @app.route('/shared/model/<share_id>')
 def shared_model_data(share_id):
     """Paylaşılan model verisini görüntüle"""
     try:
         shared_data = SharedData.query.filter_by(share_id=share_id).first_or_404()
-        
-        # Dosya yolunu oluştur
         filename = f"synthetic_data_{share_id}.csv"
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        
         if not os.path.exists(file_path):
             flash('Paylaşılan dosya bulunamadı', 'error')
             return redirect(url_for('home'))
-        
-        # Veriyi oku
         synthetic_data = pd.read_csv(file_path)
-        
+        # Download URL'yi ekle!
+        download_url = url_for('download_shared_model_data', share_id=share_id)
         return render_template(
             'shared_model.html',
             shared_data=shared_data,
+            parameters=shared_data.parameters,   # <-- Bunu ekle!
             preview=synthetic_data.head(10).to_dict('records'),
             columns=synthetic_data.columns.tolist(),
-            metrics=shared_data.parameters.get('metrics', {})
+            metrics=shared_data.parameters.get('metrics', {}),
+            download_url=download_url
         )
-        
     except Exception as e:
         app.logger.error(f"Paylaşılan model görüntüleme hatası: {str(e)}")
         flash('Paylaşılan veri görüntülenemedi', 'error')
@@ -2434,6 +2769,105 @@ class SharedData(db.Model):
     parameters = db.Column(db.JSON, nullable=False)  # Model parametreleri
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     user = db.relationship('User', backref=db.backref('shared_data', lazy=True))
+
+@app.route('/shared/model/<share_id>/download')
+def download_shared_model_data(share_id):
+    try:
+        # Paylaşılan veriyi kontrol et
+        shared_data = SharedData.query.filter_by(share_id=share_id).first()
+        if not shared_data:
+            flash('Paylaşılan veri bulunamadı', 'error')
+            return redirect(url_for('home'))
+        
+        filename = f"synthetic_data_{share_id}.csv"
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        
+        if not os.path.exists(file_path):
+            flash('Dosya bulunamadı', 'error')
+            return redirect(url_for('home'))
+        
+        return send_file(
+            file_path, 
+            as_attachment=True, 
+            download_name=filename,
+            mimetype='text/csv'
+        )
+    except Exception as e:
+        app.logger.error(f"Paylaşılan dosya indirme hatası: {str(e)}")
+        flash('Dosya indirilemedi', 'error')
+        return redirect(url_for('home'))
+
+@app.template_filter('datetime')
+def format_datetime(value, format='%Y-%m-%d %H:%M:%S'):
+    if value is None:
+        return ""
+    return value.strftime(format)
+
+@app.route('/analyze_quality', methods=['POST'])
+@login_required
+def analyze_quality():
+    try:
+        # Dosya kontrolü
+        if 'real_data' not in request.files or 'synthetic_data' not in request.files:
+            return jsonify({'success': False, 'error': 'Her iki dosya da yüklenmeli!'}), 400
+        
+        real_file = request.files['real_data']
+        synthetic_file = request.files['synthetic_data']
+        
+        if real_file.filename == '' or synthetic_file.filename == '':
+            return jsonify({'success': False, 'error': 'Dosya seçilmedi!'}), 400
+        
+        if not allowed_file(real_file.filename) or not allowed_file(synthetic_file.filename):
+            return jsonify({'success': False, 'error': 'Desteklenmeyen dosya formatı! Sadece CSV dosyaları kabul edilir.'}), 400
+        
+        # Dosyaları oku
+        try:
+            real_data = pd.read_csv(real_file)
+            synthetic_data = pd.read_csv(synthetic_file)
+        except Exception as e:
+            return jsonify({'success': False, 'error': f'Dosya okuma hatası: {str(e)}'}), 400
+        
+        # Veri kontrolü
+        if real_data.empty or synthetic_data.empty:
+            return jsonify({'success': False, 'error': 'Dosyalar boş olamaz!'}), 400
+        
+        # Metrikleri hesapla
+        try:
+            metrics = calculate_quality_metrics(real_data, synthetic_data)
+            # NaN değerlerini güvenli şekilde string'e çevir
+            safe_metrics = {}
+            for k, v in metrics.items():
+                if pd.isna(v) or v is None:
+                    safe_metrics[k] = "Hesaplanamadı"
+                elif isinstance(v, (int, float)) and (v != v or v == float('inf') or v == float('-inf')):
+                    # NaN, inf, -inf kontrolü
+                    safe_metrics[k] = "Hesaplanamadı"
+                else:
+                    safe_metrics[k] = str(v)
+            metrics = safe_metrics
+        except Exception as e:
+            app.logger.error(f"Metrik hesaplama hatası: {str(e)}")
+            return jsonify({'success': False, 'error': f'Metrik hesaplama hatası: {str(e)}'}), 500
+        
+        # Önizleme verileri
+        preview_real = real_data.head().to_dict('records')
+        preview_synth = synthetic_data.head().to_dict('records')
+        
+        return jsonify({
+            'success': True,
+            'metrics': metrics,
+            'preview_real': preview_real,
+            'preview_synth': preview_synth
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Analyze quality genel hatası: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({'success': False, 'error': f'Genel hata: {str(e)}'}), 500
+
+@app.route('/analyze_quality_page')
+@login_required
+def analyze_quality_page():
+    return render_template('analyze_quality.html')
 
 if __name__ == "__main__":
     with app.app_context():
