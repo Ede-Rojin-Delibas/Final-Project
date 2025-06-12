@@ -95,6 +95,70 @@
             <div id="results" class="hidden space-y-4">
                 <!-- PII Kolonları Uyarı ve Seçim Kutusu -->
                 <div id="piiColumnsBox" class="hidden mb-4"></div>
+                
+                <!-- Kalite Metrikleri -->
+                <div id="qualityMetrics" class="hidden bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Kalite Değerlendirme Metrikleri</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- ML Efficacy -->
+                        <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
+                            <h4 class="font-medium text-blue-900 mb-2">ML Etkinliği (MLPRegressor)</h4>
+                            <p id="mlEfficacyScore" class="text-2xl font-bold text-blue-600">-</p>
+                            <p class="text-xs text-blue-700 mt-1">Yüksek değer = İyi performans</p>
+                        </div>
+                        
+                        <!-- Linear Regression -->
+                        <div class="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
+                            <h4 class="font-medium text-green-900 mb-2">ML Etkinliği (LinearRegression)</h4>
+                            <p id="linearRegressionScore" class="text-2xl font-bold text-green-600">-</p>
+                            <p class="text-xs text-green-700 mt-1">Basit regresyon performansı</p>
+                        </div>
+                        
+                        <!-- Statistical Similarity -->
+                        <div class="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
+                            <h4 class="font-medium text-purple-900 mb-2">İstatistiksel Benzerlik</h4>
+                            <p id="statisticalScore" class="text-2xl font-bold text-purple-600">-</p>
+                            <p class="text-xs text-purple-700 mt-1">Veri dağılım benzerliği</p>
+                        </div>
+                        
+                        <!-- Correlation Similarity -->
+                        <div class="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg border border-orange-200">
+                            <h4 class="font-medium text-orange-900 mb-2">Korelasyon Benzerliği</h4>
+                            <p id="correlationScore" class="text-2xl font-bold text-orange-600">-</p>
+                            <p class="text-xs text-orange-700 mt-1">Değişken ilişkileri</p>
+                        </div>
+                        
+                        <!-- Category Coverage -->
+                        <div class="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-lg border border-red-200">
+                            <h4 class="font-medium text-red-900 mb-2">Kategori Kapsamı</h4>
+                            <p id="categoryCoverageScore" class="text-2xl font-bold text-red-600">-</p>
+                            <p class="text-xs text-red-700 mt-1">Kategorik veri kapsamı</p>
+                        </div>
+                        
+                        <!-- Boundary Adherence -->
+                        <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-lg border border-indigo-200">
+                            <h4 class="font-medium text-indigo-900 mb-2">Sınır Uyumu</h4>
+                            <p id="boundaryScore" class="text-2xl font-bold text-indigo-600">-</p>
+                            <p class="text-xs text-indigo-700 mt-1">Değer aralığı uyumu</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Detection Metrics -->
+                    <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 rounded-lg border border-yellow-200">
+                            <h4 class="font-medium text-yellow-900 mb-2">Logistic Detection</h4>
+                            <p id="logisticDetectionScore" class="text-2xl font-bold text-yellow-600">-</p>
+                            <p class="text-xs text-yellow-700 mt-1">Düşük değer = İyi gizlilik</p>
+                        </div>
+                        
+                        <div class="bg-gradient-to-br from-pink-50 to-pink-100 p-4 rounded-lg border border-pink-200">
+                            <h4 class="font-medium text-pink-900 mb-2">SVC Detection</h4>
+                            <p id="svcDetectionScore" class="text-2xl font-bold text-pink-600">-</p>
+                            <p class="text-xs text-pink-700 mt-1">Düşük değer = İyi gizlilik</p>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- Önizleme Tablosu -->
                 <div id="previewTable" class="mt-4"></div>
 

@@ -39,6 +39,7 @@ from sdmetrics.single_table import LogisticDetection, SVCDetection
 from sdmetrics.single_table import CSTest, CorrelationSimilarity
 from sdmetrics.single_table import BinaryMLPClassifier, MulticlassMLPClassifier, MLPRegressor, LinearRegression
 import traceback
+import matplotlib.pyplot as plt
 
 
 fake=Faker()
@@ -1147,7 +1148,6 @@ def generate_fake_data(rows, columns, data_types):
         for data_type in data_types:
             value = ""
             try:
-                print(f"Üretiliyor: {data_type}")
                 category = get_data_type_category(data_type)
                 if category == "Kişisel":
                     value = personal_data.get(data_type, "")
@@ -1394,22 +1394,6 @@ def login():
                 flash("Bu email adresi ile kayıtlı bir hesap bulunamadı!", "danger")
             db.session.commit()
             return redirect(url_for('login'))
-        # print("Kullanıcı nesnesi:", user)  # Test çıktısı
-        # if user:
-        #     print("Veritabanındaki hash:", user.password_hash)  # Kullanıcının hash'lenmiş şifresini gör
-        #     print("Girilen şifre:", password)  # Kullanıcının girdiği şifreyi gör
-        #     print("Hash Check Result:", bcrypt.check_password_hash(user.password_hash, password))  # Doğrulama sonucunu yazdır
-        
-        
-        # if user and bcrypt.check_password_hash(user.password_hash, password):  # Hash doğrulama
-        #     session.clear()               #Session fixation önle
-        #     session.permanent = True     #Oturumu zamanlayalım
-        #     login_user(user)
-        #     flash('Giriş başarılı!', 'success')
-        #     return redirect(url_for('generate_data'))
-            
-        # else:
-        #     flash('Giriş başarısız. Lütfen bilgilerinizi kontrol edin.', 'danger')
     
     return render_template('login.html')
 login_manager.login_view = 'login'  
@@ -2030,7 +2014,17 @@ def model_preview():
             }
             if model_type == 'gaussiancopula':
                 model_params = {}
-            model = train_model(df, metadata, model_type=model_type, **model_params)
+            # Uygun hedef sütunu otomatik seç
+            numeric_cols = [col for col in df.columns if pd.api.types.is_numeric_dtype(df[col])]
+            suitable_target_col = None
+            for col in numeric_cols:
+                unique_ratio = df[col].nunique() / len(df)
+                if 0.1 < unique_ratio < 0.8:
+                    suitable_target_col = col
+                    break
+            if not suitable_target_col and numeric_cols:
+                suitable_target_col = numeric_cols[0]
+            model = train_model(df, metadata, model_type=model_type, target_col=suitable_target_col, **model_params)
             synthetic_data = model.sample(num_rows=num_rows)
             synthetic_data.replace([np.nan, np.inf, -np.inf], None, inplace=True)
             turkish_columns = {col: get_label_by_id(col) for col in synthetic_data.columns}
@@ -2049,24 +2043,70 @@ def model_preview():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
-def train_model(df, metadata, model_type='ctgan', **kwargs):
+def train_model(df, metadata, model_type='ctgan', target_col=None, **kwargs):
     try:
         if model_type == 'ctgan':
             allowed = ['epochs', 'batch_size', 'generator_dim', 'discriminator_dim', 'generator_lr', 'discriminator_lr', 'verbose', 'enforce_min_max_values']
             params = {k: v for k, v in kwargs.items() if k in allowed}
+            
+            # Varsayılan parametreleri iyileştir
+            if 'epochs' not in params:
+                params['epochs'] = 500  # Daha fazla epoch
+            if 'batch_size' not in params:
+                params['batch_size'] = 1000  # Daha büyük batch size
+            if 'generator_dim' not in params:
+                params['generator_dim'] = (512, 512)  # Daha derin ağ
+            if 'discriminator_dim' not in params:
+                params['discriminator_dim'] = (512, 512)
+            if 'generator_lr' not in params:
+                params['generator_lr'] = 0.0001  # Daha düşük learning rate
+            if 'discriminator_lr' not in params:
+                params['discriminator_lr'] = 0.0001
+            
+            params['verbose'] = True
+            params['enforce_min_max_values'] = True  # Değer aralıklarını zorla
+            
+            if target_col and 'conditional_columns' not in params:
+                params['conditional_columns'] = [target_col]
+            
             model = CTGANSynthesizer(metadata, **params)
         elif model_type == 'tvae':
-            allowed = ['epochs', 'batch_size', 'embedding_dim', 'compress_dims', 'decompress_dims', 'lr', 'verbose', 'enforce_min_max_values']
+            allowed = ['epochs', 'batch_size', 'embedding_dim', 'compress_dims', 'decompress_dims', 'verbose', 'enforce_min_max_values']
             params = {k: v for k, v in kwargs.items() if k in allowed}
+            # TVAE conditional_columns parametresini desteklemez!
+            params.pop('conditional_columns', None)
             model = TVAESynthesizer(metadata, **params)
         elif model_type == 'copulagan':
             allowed = ['epochs', 'batch_size', 'generator_lr', 'discriminator_lr', 'verbose', 'enforce_min_max_values']
             params = {k: v for k, v in kwargs.items() if k in allowed}
+            
+            # CopulaGAN parametrelerini iyileştir
+            if 'epochs' not in params:
+                params['epochs'] = 300
+            if 'batch_size' not in params:
+                params['batch_size'] = 500
+            if 'generator_lr' not in params:
+                params['generator_lr'] = 0.0002
+            if 'discriminator_lr' not in params:
+                params['discriminator_lr'] = 0.0002
+            
+            params['verbose'] = True
+            params['enforce_min_max_values'] = True
+            
+            if target_col and 'conditional_columns' not in params:
+                params['conditional_columns'] = [target_col]
+            
             model = CopulaGANSynthesizer(metadata, **params)
         elif model_type == 'gaussiancopula':
             model = GaussianCopulaSynthesizer(metadata)
         else:
             raise ValueError(f"Desteklenmeyen model tipi: {model_type}")
+        
+        # Model eğitimi öncesi veri kalitesini kontrol et
+        app.logger.info(f"Model eğitimi başlıyor - Veri boyutu: {df.shape}")
+        app.logger.info(f"Model tipi: {model_type}")
+        app.logger.info(f"Model parametreleri: {params if 'params' in locals() else 'Varsayılan'}")
+        
         model.fit(df)
         return model
     except Exception as e:
@@ -2171,16 +2211,113 @@ def calculate_quality_metrics(real_data, synthetic_data, target_col=None):
     app.logger.debug(f"Temizlenmiş sentetik veri kolonları (son): {synthetic_data.columns.tolist()}")
     app.logger.debug(f"Temizlenmiş gerçek veri dtypes (son):\n{real_data.dtypes}")
 
+    # Kalan tüm object/string sütunlar için bilinmeyen kategorileri NaN yap
+    for col in real_data.columns:
+        # Sadece object tipinde olan ve sayısal olmayan sütunları hedefle
+        if pd.api.types.is_object_dtype(real_data[col]) and not pd.api.types.is_numeric_dtype(real_data[col]):
+            real_categories = real_data[col].dropna().unique()
+            
+            # Sentetik verideki bilinmeyen kategorileri NaN ile değiştir
+            synthetic_data[col] = synthetic_data[col].apply(
+                lambda x: x if pd.isna(x) or x in real_categories else np.nan
+            )
+            
+            # İki veri setini de CategoricalDtype ile tekrar ayarlayın (sadece bilinen kategorilerle)
+            # Bu, SDMetrics'in iç OneHotEncoder'ının hata vermesini önleyecektir.
+            cat_type = pd.CategoricalDtype(categories=real_categories)
+            real_data[col] = real_data[col].astype(cat_type)
+            synthetic_data[col] = synthetic_data[col].astype(cat_type)
+            
+            app.logger.debug(f"Sütun '{col}': Bilinmeyen kategoriler NaN ile değiştirildi ve kategori tipi ayarlandı.")
+
+    # 8. Outlier temizleme ve veri normalizasyonu
+    for col in real_data.columns:
+        if pd.api.types.is_numeric_dtype(real_data[col]):
+            # Outlier temizleme (IQR yöntemi)
+            Q1 = real_data[col].quantile(0.25)
+            Q3 = real_data[col].quantile(0.75)
+            IQR = Q3 - Q1
+            lower_bound = Q1 - 1.5 * IQR
+            upper_bound = Q3 + 1.5 * IQR
+            
+            # Outlier'ları NaN yap (silme)
+            real_data.loc[(real_data[col] < lower_bound) | (real_data[col] > upper_bound), col] = np.nan
+            synthetic_data.loc[(synthetic_data[col] < lower_bound) | (synthetic_data[col] > upper_bound), col] = np.nan
+            
+            # NaN değerleri medyan ile doldur
+            median_val = real_data[col].median()
+            if pd.notna(median_val):
+                real_data[col] = real_data[col].fillna(median_val)
+                synthetic_data[col] = synthetic_data[col].fillna(median_val)
+            
+            # Min-max normalizasyonu (0-1 arası)
+            min_val = real_data[col].min()
+            max_val = real_data[col].max()
+            if max_val > min_val:
+                real_data[col] = (real_data[col] - min_val) / (max_val - min_val)
+                synthetic_data[col] = (synthetic_data[col] - min_val) / (max_val - min_val)
+
     # ML Efficacy (MLPRegressor)
     try:
         suitable_target_col = None
         if target_col and target_col in real_data.columns and pd.api.types.is_numeric_dtype(real_data[target_col]):
             suitable_target_col = target_col
         else:
+            # Daha akıllı hedef sütun seçimi
             numeric_cols = [col for col in real_data.columns if pd.api.types.is_numeric_dtype(real_data[col])]
+            
             if numeric_cols:
-                suitable_target_col = numeric_cols[0]
-                app.logger.info(f"ML Etkinliği için otomatik olarak hedef sütun seçildi: {suitable_target_col}")
+                # Hedef sütun için kriterler:
+                # 1. Çok fazla benzersiz değer olmamalı (ID gibi)
+                # 2. Çok az benzersiz değer olmamalı (sabit değer gibi)
+                # 3. NaN oranı düşük olmalı
+                # 4. Değer aralığı makul olmalı
+                
+                best_target = None
+                best_score = -1
+                
+                for col in numeric_cols:
+                    # NaN oranını hesapla
+                    nan_ratio = real_data[col].isna().sum() / len(real_data[col])
+                    
+                    # Benzersiz değer oranını hesapla
+                    unique_ratio = real_data[col].nunique() / len(real_data[col])
+                    
+                    # Değer aralığını kontrol et
+                    col_data = real_data[col].dropna()
+                    if len(col_data) > 0:
+                        value_range = col_data.max() - col_data.min()
+                        std_dev = col_data.std()
+                        
+                        # Skor hesapla (yüksek skor = daha iyi hedef)
+                        score = 0
+                        
+                        # NaN oranı düşükse +1 puan
+                        if nan_ratio < 0.3:
+                            score += 1
+                        
+                        # Benzersiz değer oranı makulse +1 puan (0.1-0.8 arası)
+                        if 0.1 <= unique_ratio <= 0.8:
+                            score += 1
+                        
+                        # Standart sapma varsa +1 puan
+                        if std_dev > 0:
+                            score += 1
+                        
+                        # Değer aralığı makulse +1 puan
+                        if value_range > 0:
+                            score += 1
+                        
+                        # Negatif değerler varsa -1 puan (genelde hedef değişkenler pozitiftir)
+                        if (col_data < 0).any():
+                            score -= 1
+                        
+                        if score > best_score:
+                            best_score = score
+                            best_target = col
+                
+                suitable_target_col = best_target
+                app.logger.info(f"ML Etkinliği için en uygun hedef sütun seçildi: {suitable_target_col} (skor: {best_score})")
 
         if suitable_target_col:
             temp_real_target = real_data[suitable_target_col].dropna()
@@ -2189,13 +2326,88 @@ def calculate_quality_metrics(real_data, synthetic_data, target_col=None):
             if temp_real_target.empty or temp_synth_target.empty or len(temp_real_target.unique()) < 2:
                  metrics_results['ML Etkinliği (MLPRegressor)'] = "Hedef sütunda yeterli veri veya çeşitlilik yok."
             else:
+                # Veri kalitesini kontrol et
+                real_std = temp_real_target.std()
+                synth_std = temp_synth_target.std()
+                
+                # Eğer standart sapma çok düşükse veya çok yüksekse uyarı ver
+                if real_std < 0.001 or synth_std < 0.001:
+                    app.logger.warning(f"Hedef sütun '{suitable_target_col}' çok düşük varyansa sahip")
+                
+                # MLPRegressor hesaplaması
                 metric_result = MLPRegressor.compute(real_data, synthetic_data, target=suitable_target_col)
-                metrics_results['ML Etkinliği (MLPRegressor)'] = round(metric_result * 100, 1)
+                
+                # Sonucu kontrol et ve sınırla
+                if isinstance(metric_result, (int, float)):
+                    # Negatif değerleri 0'a, çok yüksek değerleri 100'e sınırla
+                    if metric_result < 0:
+                        metric_result = 0
+                    elif metric_result > 1:
+                        metric_result = 1
+                    
+                    metrics_results['ML Etkinliği (MLPRegressor)'] = round(metric_result * 100, 1)
+                else:
+                    metrics_results['ML Etkinliği (MLPRegressor)'] = "Hesaplanamadı (geçersiz sonuç)"
         else:
             metrics_results['ML Etkinliği (MLPRegressor)'] = "Hedef sütun sayısal değil veya bulunamadı."
     except Exception as e:
         metrics_results['ML Etkinliği (MLPRegressor)'] = "Hesaplanamadı"
         app.logger.error(f"ML Efficacy hesaplama hatası: {traceback.format_exc()}")
+
+    # Alternatif ML Efficacy metrikleri
+    try:
+        if suitable_target_col:
+            # LinearRegression ile ML Efficacy
+            try:
+                linear_metric = LinearRegression.compute(real_data, synthetic_data, target=suitable_target_col)
+                if isinstance(linear_metric, (int, float)):
+                    if linear_metric < 0:
+                        linear_metric = 0
+                    elif linear_metric > 1:
+                        linear_metric = 1
+                    metrics_results['ML Etkinliği (LinearRegression)'] = round(linear_metric * 100, 1)
+                else:
+                    metrics_results['ML Etkinliği (LinearRegression)'] = "Hesaplanamadı"
+            except Exception as e:
+                metrics_results['ML Etkinliği (LinearRegression)'] = "Hesaplanamadı"
+                app.logger.warning(f"LinearRegression hesaplama hatası: {str(e)}")
+            
+            # Kategorik hedef değişkenler için sınıflandırma metrikleri
+            categorical_targets = [col for col in real_data.columns 
+                                 if (pd.api.types.is_object_dtype(real_data[col]) or 
+                                     isinstance(real_data[col].dtype, pd.CategoricalDtype))
+                                 and 2 <= real_data[col].nunique() <= 10]
+            
+            if categorical_targets:
+                best_cat_target = categorical_targets[0]  # İlk kategorik sütunu kullan
+                try:
+                    # Binary sınıflandırma için
+                    if real_data[best_cat_target].nunique() == 2:
+                        binary_metric = BinaryMLPClassifier.compute(real_data, synthetic_data, target=best_cat_target)
+                        if isinstance(binary_metric, (int, float)):
+                            if binary_metric < 0:
+                                binary_metric = 0
+                            elif binary_metric > 1:
+                                binary_metric = 1
+                            metrics_results['ML Etkinliği (BinaryMLPClassifier)'] = round(binary_metric * 100, 1)
+                        else:
+                            metrics_results['ML Etkinliği (BinaryMLPClassifier)'] = "Hesaplanamadı"
+                    # Çok sınıflı sınıflandırma için
+                    else:
+                        multiclass_metric = MulticlassMLPClassifier.compute(real_data, synthetic_data, target=best_cat_target)
+                        if isinstance(multiclass_metric, (int, float)):
+                            if multiclass_metric < 0:
+                                multiclass_metric = 0
+                            elif multiclass_metric > 1:
+                                multiclass_metric = 1
+                            metrics_results['ML Etkinliği (MulticlassMLPClassifier)'] = round(multiclass_metric * 100, 1)
+                        else:
+                            metrics_results['ML Etkinliği (MulticlassMLPClassifier)'] = "Hesaplanamadı"
+                except Exception as e:
+                    metrics_results['ML Etkinliği (Sınıflandırma)'] = "Hesaplanamadı"
+                    app.logger.warning(f"Sınıflandırma metrik hesaplama hatası: {str(e)}")
+    except Exception as e:
+        app.logger.warning(f"Alternatif ML Efficacy metrikleri hesaplanamadı: {str(e)}")
 
     # İstatistiksel Benzerlik (CSTest)
     cs_test_score = 0
@@ -2312,11 +2524,6 @@ def calculate_quality_metrics(real_data, synthetic_data, target_col=None):
     except Exception as e:
         metrics_results['SVC Detection'] = "Hesaplanamadı"
         app.logger.error(f"SVC Detection hesaplama hatası: {traceback.format_exc()}")
-
-    print("MLPRegressor sonucu:", metrics_results.get('ML Etkinliği (MLPRegressor)'))
-    print("CSTest sonucu:", metrics_results.get('İstatistiksel Benzerlik (CSTest)'))
-    print("CorrelationSimilarity sonucu:", metrics_results.get('Korelasyon Benzerliği (CorrelationSimilarity)'))
-    print("TVComplement sonucu:", metrics_results.get('Kategori Kapsamı (TVComplement)'))
 
     # NaN değerlerini güvenli hale getir
     safe_metrics = {}
@@ -2752,7 +2959,6 @@ def clean_dataframe(df):
     # Hatalı sütunları kaldır
     for col in df.columns:
         if df[col].apply(lambda x: isinstance(x, (dict, list, pd.DataFrame))).any():
-            print(f"Hatalı sütun: {col} - kaldırılıyor")
             df = df.drop(columns=[col])
     # Object tiplerini string'e çevir
     for col in df.select_dtypes(include=['object']).columns:

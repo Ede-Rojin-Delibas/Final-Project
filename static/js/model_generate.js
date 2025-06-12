@@ -93,6 +93,12 @@ function generateModelData() {
                 }
             }
             
+            // Kalite metriklerini göster
+            if (data.metrics) {
+                updateQualityMetrics(data.metrics);
+                document.getElementById('qualityMetrics').classList.remove('hidden');
+            }
+            
             showToast('Veri başarıyla üretildi!', 'success');
         } else {
             showToast(data.error || 'Veri üretimi başarısız oldu.', 'error');
@@ -312,6 +318,75 @@ function showPIIColumns(piiColumns) {
         container.appendChild(div);
     });
     container.innerHTML += `<div class="text-xs text-gray-500 mt-1">Bu sütunları hariç bırakmak istemiyorsanız işaretini kaldırabilirsiniz.</div>`;
+}
+
+// Kalite metriklerini güncelle
+function updateQualityMetrics(metrics) {
+    if (!metrics) return;
+    
+    const formatScore = (score) => {
+        if (score === undefined || score === null || score === '' || score === 'Veri yok' || score === 'Hesaplanamadı') {
+            return '-';
+        }
+        return score.toString();
+    };
+    
+    // ML Efficacy metrikleri
+    document.getElementById('mlEfficacyScore').textContent = formatScore(metrics['ML Etkinliği (MLPRegressor)']);
+    document.getElementById('linearRegressionScore').textContent = formatScore(metrics['ML Etkinliği (LinearRegression)']);
+    
+    // İstatistiksel metrikler
+    document.getElementById('statisticalScore').textContent = formatScore(metrics['İstatistiksel Benzerlik (CSTest)']);
+    document.getElementById('correlationScore').textContent = formatScore(metrics['Korelasyon Benzerliği (CorrelationSimilarity)']);
+    document.getElementById('categoryCoverageScore').textContent = formatScore(metrics['Kategori Kapsamı (TVComplement)']);
+    document.getElementById('boundaryScore').textContent = formatScore(metrics['Sınır Uyumu (BoundaryAdherence)']);
+    
+    // Detection metrikleri
+    document.getElementById('logisticDetectionScore').textContent = formatScore(metrics['Logistic Detection']);
+    document.getElementById('svcDetectionScore').textContent = formatScore(metrics['SVC Detection']);
+    
+    // Metrik renklerini ayarla (performansa göre)
+    updateMetricColors();
+}
+
+// Metrik renklerini performansa göre ayarla
+function updateMetricColors() {
+    const metricElements = document.querySelectorAll('[id$="Score"]');
+    
+    metricElements.forEach(element => {
+        const score = element.textContent;
+        if (score === '-' || score === 'Hesaplanamadı' || score === 'Veri yok') {
+            element.className = 'text-2xl font-bold text-gray-400';
+            return;
+        }
+        
+        // Sayısal değeri çıkar
+        const numericValue = parseFloat(score.replace(/[^\d.-]/g, ''));
+        if (isNaN(numericValue)) {
+            element.className = 'text-2xl font-bold text-gray-500';
+            return;
+        }
+        
+        // Detection metrikleri için (düşük değer = iyi)
+        if (element.id.includes('Detection')) {
+            if (numericValue <= 30) {
+                element.className = 'text-2xl font-bold text-green-600';
+            } else if (numericValue <= 60) {
+                element.className = 'text-2xl font-bold text-yellow-600';
+            } else {
+                element.className = 'text-2xl font-bold text-red-600';
+            }
+        } else {
+            // Diğer metrikler için (yüksek değer = iyi)
+            if (numericValue >= 70) {
+                element.className = 'text-2xl font-bold text-green-600';
+            } else if (numericValue >= 40) {
+                element.className = 'text-2xl font-bold text-yellow-600';
+            } else {
+                element.className = 'text-2xl font-bold text-red-600';
+            }
+        }
+    });
 }
 
 // Toast bildirimi
